@@ -1,4 +1,4 @@
-name: driftscan
+name: driftscan terraform drift
 description: Detect Terraform/OpenTofu drift and alert only on what changed since the last scan.
 branding:
   icon: git-pull-request
