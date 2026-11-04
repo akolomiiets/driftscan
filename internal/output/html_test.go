@@ -62,8 +62,14 @@ func TestHTMLGolden(t *testing.T) {
 }
 
 func TestHTMLIsDeterministic(t *testing.T) {
-	a, _ := HTML(htmlGoldenReport(), goldenSource(), htmlGenerated)
-	b, _ := HTML(htmlGoldenReport(), goldenSource(), htmlGenerated)
+	a, err := HTML(htmlGoldenReport(), goldenSource(), htmlGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	b, err := HTML(htmlGoldenReport(), goldenSource(), htmlGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if string(a) != string(b) {
 		t.Error("two renders of the same Report differ")
@@ -72,8 +78,13 @@ func TestHTMLIsDeterministic(t *testing.T) {
 
 func TestHTMLEscapesUserStrings(t *testing.T) {
 	r := htmlGoldenReport()
-	r.Roots = append(r.Roots, finding.RootResult{Path: "envs/x/<img src=x onerror=alert(1)>", Outcome: finding.RootError})
+	const attack = `" onmouseover="alert(1)`
+	r.Roots = append(r.Roots,
+		finding.RootResult{Path: "envs/x/<img src=x onerror=alert(1)>", Outcome: finding.RootError},
+		finding.RootResult{Path: "envs/y/" + attack, Outcome: finding.RootError})
 	r.Findings = append(r.Findings,
+		finding.Finding{Root: "envs/dev/network", Address: "aws_x.y" + attack, Kind: finding.KindDrift,
+			Severity: finding.SeverityLow, Status: finding.StatusNew},
 		finding.Finding{Root: "envs/dev/network", Address: `aws_route53_record.r["a|b<c` + "`" + `d&e\"</script><script>alert(1)</script>"]`,
 			Kind: finding.KindDrift, Severity: finding.SeverityLow, Status: finding.StatusNew, Paths: []string{"<b>x</b>"}},
 		finding.Finding{Root: "envs/x/<img src=x onerror=alert(1)>", Kind: finding.KindScanError, Severity: finding.SeverityHigh,
@@ -90,6 +101,15 @@ func TestHTMLEscapesUserStrings(t *testing.T) {
 		if strings.Contains(out, raw) {
 			t.Errorf("raw %q appears unescaped", raw)
 		}
+	}
+	if strings.Contains(out, attack) {
+		t.Error("attribute-breaking input appears raw")
+	}
+	if !strings.Contains(out, `data-q="envs/dev/network aws_x.y&#34; onmouseover=&#34;alert(1)`) {
+		t.Error("attribute value is not escaped as &#34; in data-q")
+	}
+	if !strings.Contains(out, `title="envs/y/&#34; onmouseover=&#34;alert(1)`) {
+		t.Error("Root path is not escaped as &#34; in the map title")
 	}
 	if strings.Count(out, "<script>") != 1 {
 		t.Errorf("want exactly one script element, got %d", strings.Count(out, "<script>"))
@@ -115,16 +135,54 @@ func TestHTMLCSPHashMatchesScript(t *testing.T) {
 	}
 }
 
-func TestHTMLHasNoExternalRequests(t *testing.T) {
-	b, err := HTML(htmlGoldenReport(), Source{}, htmlGenerated)
+func TestHTMLTemplateAndScriptHaveNoExternalRequests(t *testing.T) {
+	bad := []string{"http:", "https:", "//", "url(", "@import", "src=", "srcset", "<link", "<object", "<embed", "<img",
+		"<iframe", "fetch(", "XMLHttpRequest", "innerHTML"}
+	for name, text := range map[string]string{"template": htmlTemplateText, "script": htmlScript} {
+		for _, b := range bad {
+			if strings.Contains(text, b) {
+				t.Errorf("%s contains %q", name, b)
+			}
+		}
+	}
+}
+
+func TestHTMLMapListsEnvironmentsProblemsFirst(t *testing.T) {
+	r := htmlGoldenReport()
+	r.Roots = append(r.Roots, finding.RootResult{Path: "envs/aaa/web", Outcome: finding.RootClean})
+
+	b, err := HTML(r, Source{}, htmlGenerated)
 	if err != nil {
 		t.Fatal(err)
 	}
 	out := string(b)
 
-	for _, bad := range []string{"<link", "src=\"http", "@import", "url(", "<img", "<iframe"} {
-		if strings.Contains(out, bad) {
-			t.Errorf("page contains %q", bad)
+	dev := strings.Index(out, `data-env="envs/dev">envs/dev</a>`)
+	prod := strings.Index(out, `data-env="envs/prod">envs/prod</a>`)
+	clean := strings.Index(out, `data-env="envs/aaa">envs/aaa</a>`)
+	top := strings.Index(out, `data-env="-">(top level)</a>`)
+	if dev < 0 || !(dev < prod && prod < clean && clean < top) {
+		t.Errorf("map order wrong: dev %d, prod %d, clean %d, top level %d", dev, prod, clean, top)
+	}
+	if !strings.Contains(out, `aria-label="envs/dev/network: 1 drift, 1 resolved"`) {
+		t.Error("map cell has no aria-label with the Root summary")
+	}
+}
+
+func TestHeadline(t *testing.T) {
+	drift := htmlRoot{State: "drift"}
+	failed := htmlRoot{State: "error"}
+	for name, tc := range map[string]struct {
+		groups []htmlEnv
+		want   string
+	}{
+		"drift":  {[]htmlEnv{{Roots: []htmlRoot{drift}, Counts: Counts{Drift: 1}}}, "1 drifted resource in 1 Root across 1 environment"},
+		"errors": {[]htmlEnv{{Roots: []htmlRoot{failed}}}, "1 Root could not be planned, no drift found in the rest"},
+		"both":   {[]htmlEnv{{Roots: []htmlRoot{drift, failed}, Counts: Counts{Drift: 3}}}, "3 drifted resources in 1 Root across 1 environment, 1 Root could not be planned"},
+		"clean":  {[]htmlEnv{{}, {}}, "No drift across 2 environments"},
+	} {
+		if got := headline(tc.groups); got != tc.want {
+			t.Errorf("%s: got %q, want %q", name, got, tc.want)
 		}
 	}
 }
@@ -155,7 +213,7 @@ func TestHTMLNotComparedHidesNewAndChanged(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(string(b), "No Baseline") || strings.Contains(string(b), "</b> changed</li>") {
+	if !strings.Contains(string(b), "No Baseline") || strings.Contains(string(b), "Compared with the previous Scan") {
 		t.Error("not-compared page must show the Baseline note and no new/changed counters")
 	}
 }

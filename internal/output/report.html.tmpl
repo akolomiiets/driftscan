@@ -7,94 +7,132 @@
 <meta name="color-scheme" content="light dark">
 <title>driftscan report</title>
 <style>
-:root{--bg:#fff;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--card:#f6f8fa;--link:#0969da;--ok:#1a7f37;--warn:#9a6700;--bad:#cf222e;--okbg:#dafbe1;--warnbg:#fff8c5;--badbg:#ffebe9}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#4493f8;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--okbg:#12261e;--warnbg:#272115;--badbg:#2d1214}}
+:root{--paper:#EEF2F3;--surface:#F8FAFA;--ink:#1C2B33;--muted:#5B6B73;--rule:#C9D3D6;--drift:#B4235A;--pending:#A86A12;--pending-ink:#8A5508;--error:#5B3FA8;--clean:#5E8C6A;--ack:#8A9BA3}
+@media (prefers-color-scheme:dark){:root{--paper:#0F1A1F;--surface:#16232A;--ink:#DCE6E9;--muted:#8FA1A8;--rule:#2A3A42;--drift:#E2588C;--pending:#D9A040;--pending-ink:#D9A040;--error:#9A84E6;--clean:#86B894}}
 *{box-sizing:border-box}
-body{margin:0;padding:1.5rem;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-a{color:var(--link)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.page{max-width:72rem;padding:2rem 16px 3rem}
+a{color:var(--ink);text-underline-offset:.15em}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 [hidden]{display:none!important}
-h1{margin:0 0 .5rem;font-size:1.5rem}
-h2{margin:1.5rem 0 .5rem;font-size:1.1rem}
-.banner{display:inline-block;padding:.15rem .6rem;border-radius:1rem;font-weight:600;border:1px solid currentColor}
-.banner.ok{color:var(--ok);background:var(--okbg)}.banner.warn{color:var(--warn);background:var(--warnbg)}.banner.bad{color:var(--bad);background:var(--badbg)}
-.meta{color:var(--muted);margin:.5rem 0}
-.note{margin:.5rem 0;padding:.4rem .75rem;border-left:4px solid var(--warn);background:var(--warnbg)}
-.counters{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0;padding:0;list-style:none}
-.counters li{padding:.3rem .75rem;border:1px solid var(--line);border-radius:.4rem;background:var(--card)}
-.counters b{font-size:1.1rem}
-form#filters{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end;margin:1rem 0;padding:.75rem;border:1px solid var(--line);border-radius:.4rem;background:var(--card)}
-form#filters label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted)}
-select,input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:.3rem;padding:.25rem .4rem}
-#shown{margin:0 0 .5rem;color:var(--muted)}
-details.root{margin:.4rem 0;border:1px solid var(--line);border-radius:.4rem}
-details.root>summary{padding:.4rem .75rem;cursor:pointer;background:var(--card);border-radius:.4rem}
-details.root[open]>summary{border-bottom:1px solid var(--line);border-radius:.4rem .4rem 0 0}
-summary .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
-summary .small{color:var(--muted);font-size:.85rem;margin-left:.5rem}
-.table-wrap{overflow-x:auto;padding:0 .5rem .5rem}
-table{border-collapse:collapse;width:100%;margin-top:.5rem}
-th,td{text-align:left;vertical-align:top;padding:.3rem .5rem;border-bottom:1px solid var(--line)}
-th{font-size:.8rem;color:var(--muted);white-space:nowrap}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;overflow-wrap:anywhere}
-tr.resolved td{color:var(--muted);opacity:.75}
-tr.resolved code{text-decoration:line-through}
-.sev{font-weight:600}.sev-critical,.sev-high{color:var(--bad)}.sev-medium{color:var(--warn)}.sev-low,.sev-info{color:var(--muted)}
-.msg{white-space:pre-wrap;overflow-wrap:anywhere}
+h1{margin:0;font-size:2rem;line-height:1.2;font-weight:650;letter-spacing:-.02em}
+h2{margin:2rem 0 .25rem;font-size:1.15rem;font-weight:650}
+.meta{margin:.6rem 0 0;color:var(--muted)}
+.note{margin:.6rem 0 0;padding-left:.75rem;border-left:3px solid var(--pending)}
+.mapwrap{margin-top:1.5rem;overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+caption{text-align:left;font-weight:650;padding-bottom:.4rem}
+th,td{text-align:left;vertical-align:top;padding:.4rem .6rem .4rem 0;border-bottom:1px solid var(--rule)}
+th{font-weight:600;color:var(--muted);white-space:nowrap}
+.map td.num,.map th.num{text-align:right;padding-left:.6rem}
+.map tfoot th,.map tfoot td{border-bottom:0;border-top:2px solid var(--ink);color:var(--ink);font-weight:650}
+.zero{color:var(--muted)}
+.map tfoot td:nth-child(2){white-space:nowrap}
+.strip{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:1.5rem}
+.cell{display:inline-block;width:16px;height:16px;border-radius:2px;border:2px solid transparent;flex:none;vertical-align:-3px}
+a.cell:hover{outline:2px solid var(--ink);outline-offset:1px}
+.s-drift{background:var(--drift);border-color:var(--drift)}
+.s-pending{border-color:var(--pending)}
+.s-error{border-color:var(--error);background:repeating-linear-gradient(45deg,var(--error) 0 3px,transparent 3px 6px)}
+.s-clean{background:var(--clean);border-color:var(--clean)}
+.s-ack{border:2px dashed var(--ack)}
+.legend{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin:.6rem 0 0;padding:0;list-style:none;color:var(--muted);font-size:.9rem}
+.legend .cell{margin-right:.35rem}
+#filters{position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:end;margin-top:1.5rem;padding:.6rem 0;background:var(--paper);border-bottom:1px solid var(--rule)}
+#filters label{display:flex;flex-direction:column;font-size:.9rem;color:var(--muted)}
+select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:0;padding:.25rem .4rem;max-width:100%}
+#shown{margin:.75rem 0 0;color:var(--muted)}
+details.root{border-bottom:1px solid var(--rule)}
+details.root>summary{padding:.55rem 0;cursor:pointer}
+summary .path{font:600 .9rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-left:.25rem}
+summary .small{color:var(--muted);margin-left:.6rem}
+.table-wrap{overflow-x:auto;padding-bottom:.75rem}
+.rows{table-layout:fixed;min-width:72rem}
+.rows col:nth-child(-n+2){width:5.5rem}.rows col:nth-child(3){width:9.5rem}.rows col:nth-child(4),.rows col:nth-child(5){width:12rem}.rows col:nth-child(6){width:14rem}
+.rows th,.rows td{font-size:.9rem}
+code,.loc{font:.85rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:break-word}
+.sev{display:inline-block;padding:0 .4em;border:1px solid currentColor;font-size:.8rem;color:var(--muted)}
+.sev-critical,.sev-high{color:var(--drift);font-weight:700}
+.sev-medium{color:var(--pending-ink);font-weight:600}
+.st{color:var(--muted)}
+.st-new,.st-changed{color:var(--ink);font-weight:700}
+tr.resolved td{color:var(--muted)}
+.msg{white-space:pre-wrap}
 .detail{display:block;color:var(--muted);font-size:.85rem}
-details.acks{margin:.5rem .5rem 0}
-details.acks>summary{cursor:pointer;color:var(--muted)}
-footer{margin-top:2rem;color:var(--muted);font-size:.8rem}
+details.acks{padding-bottom:.25rem}
+details.acks>summary{cursor:pointer;color:var(--muted);padding:.25rem 0}
+footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
+<div class="page">
 <header>
-<h1>driftscan report</h1>
-<p><span class="banner {{.StatusClass}}">{{.StatusText}}</span></p>
-<p class="meta">driftscan {{.Tool}} | started {{.Started}} | duration {{.Duration}} | {{.Counts.Roots}} Roots scanned, {{.Counts.RootsDrifted}} with Drift</p>
+<h1>{{.Headline}}</h1>
+<p class="meta">{{.Meta}}</p>
 {{if not .Compared}}<p class="note">No Baseline: this Scan establishes it. Statuses start from the next Scan.</p>{{end}}
 {{if .Partial}}<p class="note">Partial report: some Roots were not scanned{{if .Shard}} (shard {{.Shard}}){{end}}, so Findings of absent Roots are unknown, not resolved.</p>{{end}}
-<ul class="counters" aria-label="Counters">
-<li><b>{{.Counts.Drift}}</b> Drift</li>
-<li><b>{{.Counts.Pending}}</b> Pending changes</li>
-<li><b>{{.Counts.Errors}}</b> Scan errors</li>
-<li><b>{{.Counts.Acknowledged}}</b> acknowledged</li>
-<li><b>{{.Counts.Resolved}}</b> resolved</li>
-{{if .Compared}}<li><b>{{.Added}}</b> new</li>
-<li><b>{{.Changed}}</b> changed</li>{{end}}
+<div class="mapwrap">
+<table class="map">
+<caption>Environments</caption>
+<thead><tr><th scope="col">Environment</th><th scope="col">Roots</th><th scope="col" class="num">Drift</th><th scope="col" class="num">Pending</th><th scope="col" class="num">Scan errors</th><th scope="col" class="num">Acknowledged</th><th scope="col" class="num">Resolved</th></tr></thead>
+<tbody>
+{{range .Groups}}<tr>
+<th scope="row"><a class="envlink" href="#{{.ID}}" data-env="{{.Key}}">{{.Name}}</a></th>
+<td><span class="strip">{{range .Roots}}<a class="cell s-{{.State}}" href="#{{.ID}}" title="{{.Label}}" aria-label="{{.Label}}"></a>{{end}}</span></td>
+<td class="num{{if not .Counts.Drift}} zero{{end}}">{{.Counts.Drift}}</td>
+<td class="num{{if not .Counts.Pending}} zero{{end}}">{{.Counts.Pending}}</td>
+<td class="num{{if not .Counts.Errors}} zero{{end}}">{{.Counts.Errors}}</td>
+<td class="num{{if not .Counts.Acknowledged}} zero{{end}}">{{.Counts.Acknowledged}}</td>
+<td class="num{{if not .Counts.Resolved}} zero{{end}}">{{.Counts.Resolved}}</td>
+</tr>
+{{end}}</tbody>
+<tfoot><tr><th scope="row">Total</th><td>{{.Counts.Roots}} Roots</td><td class="num">{{.Counts.Drift}}</td><td class="num">{{.Counts.Pending}}</td><td class="num">{{.Counts.Errors}}</td><td class="num">{{.Counts.Acknowledged}}</td><td class="num">{{.Counts.Resolved}}</td></tr></tfoot>
+</table>
+</div>
+<ul class="legend" aria-label="Legend for Root cells">
+<li><span class="cell s-error"></span>Scan error (hatched)</li>
+<li><span class="cell s-drift"></span>Drift (solid)</li>
+<li><span class="cell s-pending"></span>Pending only (outlined)</li>
+<li><span class="cell s-ack"></span>Acknowledged only (dashed)</li>
+<li><span class="cell s-clean"></span>Clean</li>
 </ul>
 </header>
 <main>
 <form id="filters" hidden>
-<label>Environment<select id="f-env"><option value="">All</option>{{range .Envs}}<option value="{{.}}">{{.}}</option>{{end}}</select></label>
+<label>Environment<select id="f-env"><option value="">All</option>{{range .Envs}}<option value="{{.Value}}">{{.Label}}</option>{{end}}</select></label>
 <label>Kind<select id="f-kind"><option value="">All</option><option value="drift">Drift</option><option value="pending">Pending</option><option value="scan_error">Scan error</option></select></label>
 <label>Minimum severity<select id="f-sev"><option value="0">info</option><option value="1">low</option><option value="2">medium</option><option value="3">high</option><option value="4">critical</option></select></label>
 <label>Status<select id="f-status"><option value="">All</option><option value="new">new</option><option value="changed">changed</option><option value="persisting">persisting</option><option value="resolved">resolved</option><option value="unknown">unknown</option><option value="none">none</option></select></label>
-<label>Search<input id="f-q" type="search" placeholder="Root, resource or attribute" autocomplete="off"></label>
+<label>Search<input id="f-q" size="28" type="search" placeholder="Root, resource, file or owner" autocomplete="off"></label>
 </form>
 <p id="shown" role="status" aria-live="polite">{{.Total}} Findings</p>
-{{range .Groups}}<section class="env" aria-label="{{if .Name}}{{.Name}}{{else}}top level{{end}}">
-<h2>{{if .Name}}{{.Name}}{{else}}(top level){{end}}</h2>
-{{range .Roots}}<details class="root"{{if .Open}} open{{end}}>
-<summary><span class="path">{{.Path}}</span><span class="small">{{.Summary}}</span></summary>
+{{range .Groups}}<section class="env" id="{{.ID}}" data-env="{{.Key}}" aria-labelledby="h-{{.ID}}">
+<h2 id="h-{{.ID}}">{{.Name}}</h2>
+{{range .Roots}}<details class="root" id="{{.ID}}" data-env="{{.EnvKey}}"{{if .Open}} open{{end}}>
+<summary><span class="cell s-{{.State}}" aria-hidden="true"></span><span class="path">{{.Path}}</span><span class="small">{{.Summary}}</span></summary>
 {{if .Rows}}<div class="table-wrap">{{template "table" .Rows}}</div>{{end}}
 {{if .AckRows}}<details class="acks"><summary>Acknowledged ({{len .AckRows}})</summary><div class="table-wrap">{{template "table" .AckRows}}</div></details>{{end}}
 </details>
 {{end}}</section>
 {{end}}</main>
 <footer>Generated {{.Generated}} by driftscan. Attribute values are never included in a report.</footer>
+</div>
 <script>{{.Script}}</script>
 </body>
 </html>
-{{define "table"}}<table>
+{{define "table"}}<table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
 {{range .}}<tr{{if .Resolved}} class="resolved"{{end}} data-env="{{.Env}}" data-kind="{{.Kind}}" data-sev="{{.SevRank}}" data-status="{{.StatusKey}}" data-q="{{.Search}}">
 <td>{{.KindText}}</td>
-<td class="sev sev-{{.Severity}}">{{.Severity}}</td>
-<td>{{.StatusText}}</td>
+<td><span class="sev sev-{{.Severity}}">{{.Severity}}</span></td>
+<td class="st st-{{.StatusKey}}">{{.StatusText}}</td>
 <td>{{if .Address}}<code>{{.Address}}</code>{{else}}-{{end}}</td>
 <td>{{if .Paths}}<code>{{.Paths}}</code>{{else}}{{.Actions}}{{end}}</td>
-<td>{{if .LocURL}}<a href="{{.LocURL}}" target="_blank" rel="noopener noreferrer">{{.Loc}}</a>{{else if .Loc}}<code>{{.Loc}}</code>{{else}}-{{end}}</td>
+<td>{{if .LocURL}}<a class="loc" href="{{.LocURL}}" target="_blank" rel="noopener noreferrer">{{.Loc}}</a>{{else if .Loc}}<span class="loc">{{.Loc}}</span>{{else}}-{{end}}</td>
 <td>{{if .Message}}<span class="msg">{{.Message}}</span>{{end}}{{if .AckText}}<span class="detail">{{.AckText}}</span>{{end}}{{if .Owner}}<span class="detail">owner: {{.Owner}}</span>{{end}}{{if .ChangedBy}}<span class="detail">changed by: {{.ChangedBy}}</span>{{end}}</td>
 </tr>
 {{end}}</tbody>

@@ -95,8 +95,9 @@ driftscan emits the 9 most severe and one summary line for the rest.
 
 ## HTML report
 
-`-html report.html` (on `scan` and `report`) writes one self-contained page: Findings grouped by environment
-(the Root path without its last segment) and Root, with filters by environment, kind, severity, status and text.
+`-html report.html` (on `scan` and `report`) writes one self-contained page: an environment map (one row per
+environment, one colored cell per Root) on top, then Findings grouped by environment (the Root path without its last
+segment) and Root, with filters by environment, kind, severity, status and text.
 It has no external requests (inline CSS and JS, a Content-Security-Policy meta tag), works without JavaScript, and
 never contains attribute values. Upload it as an artifact to read it later:
 
@@ -119,8 +120,10 @@ never contains attribute values. Upload it as an artifact to read it later:
         with:
           name: driftscan-html
           path: driftscan-report.html
-          if-no-files-found: ignore
+          if-no-files-found: warn
 ```
+
+The step summary and annotations need no flags in Actions.
 
 ## Owners (`enrich`)
 

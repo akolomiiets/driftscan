@@ -3,155 +3,214 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-kV9KqQWwH1jvkx2xyhfGnusUPfX0wWavDtDgz6/0QoM='; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-7ZVIbEpIa1ld2GQLLw8WwkIfQBNmnbU3YPG0lY3yXLs='; base-uri 'none'">
 <meta name="color-scheme" content="light dark">
 <title>driftscan report</title>
 <style>
-:root{--bg:#fff;--fg:#1f2328;--muted:#656d76;--line:#d0d7de;--card:#f6f8fa;--link:#0969da;--ok:#1a7f37;--warn:#9a6700;--bad:#cf222e;--okbg:#dafbe1;--warnbg:#fff8c5;--badbg:#ffebe9}
-@media (prefers-color-scheme:dark){:root{--bg:#0d1117;--fg:#e6edf3;--muted:#8d96a0;--line:#30363d;--card:#161b22;--link:#4493f8;--ok:#3fb950;--warn:#d29922;--bad:#f85149;--okbg:#12261e;--warnbg:#272115;--badbg:#2d1214}}
+:root{--paper:#EEF2F3;--surface:#F8FAFA;--ink:#1C2B33;--muted:#5B6B73;--rule:#C9D3D6;--drift:#B4235A;--pending:#A86A12;--pending-ink:#8A5508;--error:#5B3FA8;--clean:#5E8C6A;--ack:#8A9BA3}
+@media (prefers-color-scheme:dark){:root{--paper:#0F1A1F;--surface:#16232A;--ink:#DCE6E9;--muted:#8FA1A8;--rule:#2A3A42;--drift:#E2588C;--pending:#D9A040;--pending-ink:#D9A040;--error:#9A84E6;--clean:#86B894}}
 *{box-sizing:border-box}
-body{margin:0;padding:1.5rem;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-a{color:var(--link)}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.page{max-width:72rem;padding:2rem 16px 3rem}
+a{color:var(--ink);text-underline-offset:.15em}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
 [hidden]{display:none!important}
-h1{margin:0 0 .5rem;font-size:1.5rem}
-h2{margin:1.5rem 0 .5rem;font-size:1.1rem}
-.banner{display:inline-block;padding:.15rem .6rem;border-radius:1rem;font-weight:600;border:1px solid currentColor}
-.banner.ok{color:var(--ok);background:var(--okbg)}.banner.warn{color:var(--warn);background:var(--warnbg)}.banner.bad{color:var(--bad);background:var(--badbg)}
-.meta{color:var(--muted);margin:.5rem 0}
-.note{margin:.5rem 0;padding:.4rem .75rem;border-left:4px solid var(--warn);background:var(--warnbg)}
-.counters{display:flex;flex-wrap:wrap;gap:.5rem;margin:.75rem 0;padding:0;list-style:none}
-.counters li{padding:.3rem .75rem;border:1px solid var(--line);border-radius:.4rem;background:var(--card)}
-.counters b{font-size:1.1rem}
-form#filters{display:flex;flex-wrap:wrap;gap:.75rem;align-items:end;margin:1rem 0;padding:.75rem;border:1px solid var(--line);border-radius:.4rem;background:var(--card)}
-form#filters label{display:flex;flex-direction:column;font-size:.8rem;color:var(--muted)}
-select,input{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:.3rem;padding:.25rem .4rem}
-#shown{margin:0 0 .5rem;color:var(--muted)}
-details.root{margin:.4rem 0;border:1px solid var(--line);border-radius:.4rem}
-details.root>summary{padding:.4rem .75rem;cursor:pointer;background:var(--card);border-radius:.4rem}
-details.root[open]>summary{border-bottom:1px solid var(--line);border-radius:.4rem .4rem 0 0}
-summary .path{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-weight:600}
-summary .small{color:var(--muted);font-size:.85rem;margin-left:.5rem}
-.table-wrap{overflow-x:auto;padding:0 .5rem .5rem}
-table{border-collapse:collapse;width:100%;margin-top:.5rem}
-th,td{text-align:left;vertical-align:top;padding:.3rem .5rem;border-bottom:1px solid var(--line)}
-th{font-size:.8rem;color:var(--muted);white-space:nowrap}
-code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85rem;overflow-wrap:anywhere}
-tr.resolved td{color:var(--muted);opacity:.75}
-tr.resolved code{text-decoration:line-through}
-.sev{font-weight:600}.sev-critical,.sev-high{color:var(--bad)}.sev-medium{color:var(--warn)}.sev-low,.sev-info{color:var(--muted)}
-.msg{white-space:pre-wrap;overflow-wrap:anywhere}
+h1{margin:0;font-size:2rem;line-height:1.2;font-weight:650;letter-spacing:-.02em}
+h2{margin:2rem 0 .25rem;font-size:1.15rem;font-weight:650}
+.meta{margin:.6rem 0 0;color:var(--muted)}
+.note{margin:.6rem 0 0;padding-left:.75rem;border-left:3px solid var(--pending)}
+.mapwrap{margin-top:1.5rem;overflow-x:auto}
+table{border-collapse:collapse;width:100%}
+caption{text-align:left;font-weight:650;padding-bottom:.4rem}
+th,td{text-align:left;vertical-align:top;padding:.4rem .6rem .4rem 0;border-bottom:1px solid var(--rule)}
+th{font-weight:600;color:var(--muted);white-space:nowrap}
+.map td.num,.map th.num{text-align:right;padding-left:.6rem}
+.map tfoot th,.map tfoot td{border-bottom:0;border-top:2px solid var(--ink);color:var(--ink);font-weight:650}
+.zero{color:var(--muted)}
+.map tfoot td:nth-child(2){white-space:nowrap}
+.strip{display:flex;flex-wrap:wrap;gap:4px;align-items:center;min-height:1.5rem}
+.cell{display:inline-block;width:16px;height:16px;border-radius:2px;border:2px solid transparent;flex:none;vertical-align:-3px}
+a.cell:hover{outline:2px solid var(--ink);outline-offset:1px}
+.s-drift{background:var(--drift);border-color:var(--drift)}
+.s-pending{border-color:var(--pending)}
+.s-error{border-color:var(--error);background:repeating-linear-gradient(45deg,var(--error) 0 3px,transparent 3px 6px)}
+.s-clean{background:var(--clean);border-color:var(--clean)}
+.s-ack{border:2px dashed var(--ack)}
+.legend{display:flex;flex-wrap:wrap;gap:.25rem 1.25rem;margin:.6rem 0 0;padding:0;list-style:none;color:var(--muted);font-size:.9rem}
+.legend .cell{margin-right:.35rem}
+#filters{position:sticky;top:0;z-index:1;display:flex;flex-wrap:wrap;gap:.5rem 1rem;align-items:end;margin-top:1.5rem;padding:.6rem 0;background:var(--paper);border-bottom:1px solid var(--rule)}
+#filters label{display:flex;flex-direction:column;font-size:.9rem;color:var(--muted)}
+select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:0;padding:.25rem .4rem;max-width:100%}
+#shown{margin:.75rem 0 0;color:var(--muted)}
+details.root{border-bottom:1px solid var(--rule)}
+details.root>summary{padding:.55rem 0;cursor:pointer}
+summary .path{font:600 .9rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-left:.25rem}
+summary .small{color:var(--muted);margin-left:.6rem}
+.table-wrap{overflow-x:auto;padding-bottom:.75rem}
+.rows{table-layout:fixed;min-width:72rem}
+.rows col:nth-child(-n+2){width:5.5rem}.rows col:nth-child(3){width:9.5rem}.rows col:nth-child(4),.rows col:nth-child(5){width:12rem}.rows col:nth-child(6){width:14rem}
+.rows th,.rows td{font-size:.9rem}
+code,.loc{font:.85rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:break-word}
+.sev{display:inline-block;padding:0 .4em;border:1px solid currentColor;font-size:.8rem;color:var(--muted)}
+.sev-critical,.sev-high{color:var(--drift);font-weight:700}
+.sev-medium{color:var(--pending-ink);font-weight:600}
+.st{color:var(--muted)}
+.st-new,.st-changed{color:var(--ink);font-weight:700}
+tr.resolved td{color:var(--muted)}
+.msg{white-space:pre-wrap}
 .detail{display:block;color:var(--muted);font-size:.85rem}
-details.acks{margin:.5rem .5rem 0}
-details.acks>summary{cursor:pointer;color:var(--muted)}
-footer{margin-top:2rem;color:var(--muted);font-size:.8rem}
+details.acks{padding-bottom:.25rem}
+details.acks>summary{cursor:pointer;color:var(--muted);padding:.25rem 0}
+footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
+@media (prefers-reduced-motion:reduce){*{scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
+<div class="page">
 <header>
-<h1>driftscan report</h1>
-<p><span class="banner bad">Drift or Scan errors found</span></p>
-<p class="meta">driftscan v0.2.0 | started 2026-11-04T12:00:00Z | duration 42s | 8 Roots scanned, 4 with Drift</p>
+<h1>2 drifted resources in 2 Roots across 3 environments, 1 Root could not be planned</h1>
+<p class="meta">driftscan v0.2.0 scanned 8 Roots on 2026-11-04 12:00 UTC in 42s. Compared with the previous Scan: 3 new, 1 changed.</p>
 
 
-<ul class="counters" aria-label="Counters">
-<li><b>2</b> Drift</li>
-<li><b>2</b> Pending changes</li>
-<li><b>1</b> Scan errors</li>
-<li><b>2</b> acknowledged</li>
-<li><b>1</b> resolved</li>
-<li><b>3</b> new</li>
-<li><b>1</b> changed</li>
+<div class="mapwrap">
+<table class="map">
+<caption>Environments</caption>
+<thead><tr><th scope="col">Environment</th><th scope="col">Roots</th><th scope="col" class="num">Drift</th><th scope="col" class="num">Pending</th><th scope="col" class="num">Scan errors</th><th scope="col" class="num">Acknowledged</th><th scope="col" class="num">Resolved</th></tr></thead>
+<tbody>
+<tr>
+<th scope="row"><a class="envlink" href="#env-envs-dev-538b67e4" data-env="envs/dev">envs/dev</a></th>
+<td><span class="strip"><a class="cell s-drift" href="#root-envs-dev-data-2d7b8287" title="envs/dev/data: 1 drift, 1 acknowledged" aria-label="envs/dev/data: 1 drift, 1 acknowledged"></a><a class="cell s-drift" href="#root-envs-dev-network-5403b91a" title="envs/dev/network: 1 drift, 1 resolved" aria-label="envs/dev/network: 1 drift, 1 resolved"></a><a class="cell s-clean" href="#root-envs-dev-compute-c30359bf" title="envs/dev/compute: clean" aria-label="envs/dev/compute: clean"></a></span></td>
+<td class="num">2</td>
+<td class="num zero">0</td>
+<td class="num zero">0</td>
+<td class="num">1</td>
+<td class="num">1</td>
+</tr>
+<tr>
+<th scope="row"><a class="envlink" href="#env-envs-prod-31740ff5" data-env="envs/prod">envs/prod</a></th>
+<td><span class="strip"><a class="cell s-error" href="#root-envs-prod-iam-788d382c" title="envs/prod/iam: 1 scan errors" aria-label="envs/prod/iam: 1 scan errors"></a><a class="cell s-pending" href="#root-envs-prod-network-91c0b22d" title="envs/prod/network: 1 pending, 1 acknowledged" aria-label="envs/prod/network: 1 pending, 1 acknowledged"></a><a class="cell s-pending" href="#root-envs-prod-queue-db447816" title="envs/prod/queue: 1 pending" aria-label="envs/prod/queue: 1 pending"></a><a class="cell s-clean" href="#root-envs-prod-data-c02663d0" title="envs/prod/data: clean" aria-label="envs/prod/data: clean"></a></span></td>
+<td class="num zero">0</td>
+<td class="num">2</td>
+<td class="num">1</td>
+<td class="num">1</td>
+<td class="num zero">0</td>
+</tr>
+<tr>
+<th scope="row"><a class="envlink" href="#env-top-level-4cf1b0e4" data-env="-">(top level)</a></th>
+<td><span class="strip"><a class="cell s-clean" href="#root-shared-a4d26868" title="shared: clean" aria-label="shared: clean"></a></span></td>
+<td class="num zero">0</td>
+<td class="num zero">0</td>
+<td class="num zero">0</td>
+<td class="num zero">0</td>
+<td class="num zero">0</td>
+</tr>
+</tbody>
+<tfoot><tr><th scope="row">Total</th><td>8 Roots</td><td class="num">2</td><td class="num">2</td><td class="num">1</td><td class="num">2</td><td class="num">1</td></tr></tfoot>
+</table>
+</div>
+<ul class="legend" aria-label="Legend for Root cells">
+<li><span class="cell s-error"></span>Scan error (hatched)</li>
+<li><span class="cell s-drift"></span>Drift (solid)</li>
+<li><span class="cell s-pending"></span>Pending only (outlined)</li>
+<li><span class="cell s-ack"></span>Acknowledged only (dashed)</li>
+<li><span class="cell s-clean"></span>Clean</li>
 </ul>
 </header>
 <main>
 <form id="filters" hidden>
-<label>Environment<select id="f-env"><option value="">All</option><option value="envs/dev">envs/dev</option><option value="envs/prod">envs/prod</option></select></label>
+<label>Environment<select id="f-env"><option value="">All</option><option value="envs/dev">envs/dev</option><option value="envs/prod">envs/prod</option><option value="-">(top level)</option></select></label>
 <label>Kind<select id="f-kind"><option value="">All</option><option value="drift">Drift</option><option value="pending">Pending</option><option value="scan_error">Scan error</option></select></label>
 <label>Minimum severity<select id="f-sev"><option value="0">info</option><option value="1">low</option><option value="2">medium</option><option value="3">high</option><option value="4">critical</option></select></label>
 <label>Status<select id="f-status"><option value="">All</option><option value="new">new</option><option value="changed">changed</option><option value="persisting">persisting</option><option value="resolved">resolved</option><option value="unknown">unknown</option><option value="none">none</option></select></label>
-<label>Search<input id="f-q" type="search" placeholder="Root, resource or attribute" autocomplete="off"></label>
+<label>Search<input id="f-q" size="28" type="search" placeholder="Root, resource, file or owner" autocomplete="off"></label>
 </form>
 <p id="shown" role="status" aria-live="polite">8 Findings</p>
-<section class="env" aria-label="envs/dev">
-<h2>envs/dev</h2>
-<details class="root" open>
-<summary><span class="path">envs/dev/data</span><span class="small">1 drift, 1 acknowledged</span></summary>
-<div class="table-wrap"><table>
+<section class="env" id="env-envs-dev-538b67e4" data-env="envs/dev" aria-labelledby="h-env-envs-dev-538b67e4">
+<h2 id="h-env-envs-dev-538b67e4">envs/dev</h2>
+<details class="root" id="root-envs-dev-data-2d7b8287" data-env="envs/dev" open>
+<summary><span class="cell s-drift" aria-hidden="true"></span><span class="path">envs/dev/data</span><span class="small">1 drift, 1 acknowledged</span></summary>
+<div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/dev" data-kind="drift" data-sev="2" data-status="changed" data-q="envs/dev/data aws_s3_bucket.logs versioning[0].enabled, tags.team">
+<tr data-env="envs/dev" data-kind="drift" data-sev="2" data-status="changed" data-q="envs/dev/data aws_s3_bucket.logs versioning[0].enabled, tags.team  infra/envs/dev/data/s3.tf:30 @org/data">
 <td>Drift</td>
-<td class="sev sev-medium">medium</td>
-<td>changed (2 scans)</td>
+<td><span class="sev sev-medium">medium</span></td>
+<td class="st st-changed">changed (2 scans)</td>
 <td><code>aws_s3_bucket.logs</code></td>
 <td><code>versioning[0].enabled, tags.Team</code></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L30" target="_blank" rel="noopener noreferrer">infra/envs/dev/data/s3.tf:30</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L30" target="_blank" rel="noopener noreferrer">infra/envs/dev/data/s3.tf:30</a></td>
 <td><span class="detail">owner: @org/data</span><span class="detail">changed by: alice</span></td>
 </tr>
 </tbody>
 </table></div>
-<details class="acks"><summary>Acknowledged (1)</summary><div class="table-wrap"><table>
+<details class="acks"><summary>Acknowledged (1)</summary><div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/dev" data-kind="drift" data-sev="0" data-status="new" data-q="envs/dev/data aws_s3_bucket.assets tags.name">
+<tr data-env="envs/dev" data-kind="drift" data-sev="0" data-status="new" data-q="envs/dev/data aws_s3_bucket.assets tags.name  infra/envs/dev/data/s3.tf:5 ">
 <td>Drift</td>
-<td class="sev sev-info">info</td>
-<td>new</td>
+<td><span class="sev sev-info">info</span></td>
+<td class="st st-new">new</td>
 <td><code>aws_s3_bucket.assets</code></td>
 <td><code>tags.Name</code></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L5" target="_blank" rel="noopener noreferrer">infra/envs/dev/data/s3.tf:5</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L5" target="_blank" rel="noopener noreferrer">infra/envs/dev/data/s3.tf:5</a></td>
 <td><span class="detail">acknowledged: covered by lifecycle.ignore_changes</span></td>
 </tr>
 </tbody>
 </table></div></details>
 </details>
-<details class="root" open>
-<summary><span class="path">envs/dev/network</span><span class="small">1 drift, 1 resolved</span></summary>
-<div class="table-wrap"><table>
+<details class="root" id="root-envs-dev-network-5403b91a" data-env="envs/dev" open>
+<summary><span class="cell s-drift" aria-hidden="true"></span><span class="path">envs/dev/network</span><span class="small">1 drift, 1 resolved</span></summary>
+<div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/dev" data-kind="drift" data-sev="3" data-status="persisting" data-q="envs/dev/network aws_security_group.web ingress[0].cidr_blocks">
+<tr data-env="envs/dev" data-kind="drift" data-sev="3" data-status="persisting" data-q="envs/dev/network aws_security_group.web ingress[0].cidr_blocks  infra/envs/dev/network/sg.tf:12 @org/sre">
 <td>Drift</td>
-<td class="sev sev-high">high</td>
-<td>persisting (3 scans)</td>
+<td><span class="sev sev-high">high</span></td>
+<td class="st st-persisting">persisting (3 scans)</td>
 <td><code>aws_security_group.web</code></td>
 <td><code>ingress[0].cidr_blocks</code></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/sg.tf#L12" target="_blank" rel="noopener noreferrer">infra/envs/dev/network/sg.tf:12</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/sg.tf#L12" target="_blank" rel="noopener noreferrer">infra/envs/dev/network/sg.tf:12</a></td>
 <td><span class="detail">owner: @org/sre</span></td>
 </tr>
-<tr class="resolved" data-env="envs/dev" data-kind="drift" data-sev="2" data-status="resolved" data-q="envs/dev/network aws_vpc.main ">
+<tr class="resolved" data-env="envs/dev" data-kind="drift" data-sev="2" data-status="resolved" data-q="envs/dev/network aws_vpc.main   infra/envs/dev/network/vpc.tf:1 ">
 <td>Drift</td>
-<td class="sev sev-medium">medium</td>
-<td>resolved</td>
+<td><span class="sev sev-medium">medium</span></td>
+<td class="st st-resolved">resolved</td>
 <td><code>aws_vpc.main</code></td>
 <td></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/vpc.tf#L1" target="_blank" rel="noopener noreferrer">infra/envs/dev/network/vpc.tf:1</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/vpc.tf#L1" target="_blank" rel="noopener noreferrer">infra/envs/dev/network/vpc.tf:1</a></td>
 <td></td>
 </tr>
 </tbody>
 </table></div>
 
 </details>
-<details class="root">
-<summary><span class="path">envs/dev/compute</span><span class="small">clean</span></summary>
+<details class="root" id="root-envs-dev-compute-c30359bf" data-env="envs/dev">
+<summary><span class="cell s-clean" aria-hidden="true"></span><span class="path">envs/dev/compute</span><span class="small">clean</span></summary>
 
 
 </details>
 </section>
-<section class="env" aria-label="envs/prod">
-<h2>envs/prod</h2>
-<details class="root" open>
-<summary><span class="path">envs/prod/iam</span><span class="small">1 scan errors</span></summary>
-<div class="table-wrap"><table>
+<section class="env" id="env-envs-prod-31740ff5" data-env="envs/prod" aria-labelledby="h-env-envs-prod-31740ff5">
+<h2 id="h-env-envs-prod-31740ff5">envs/prod</h2>
+<details class="root" id="root-envs-prod-iam-788d382c" data-env="envs/prod" open>
+<summary><span class="cell s-error" aria-hidden="true"></span><span class="path">envs/prod/iam</span><span class="small">1 scan errors</span></summary>
+<div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/prod" data-kind="scan_error" data-sev="3" data-status="new" data-q="envs/prod/iam  ">
+<tr data-env="envs/prod" data-kind="scan_error" data-sev="3" data-status="new" data-q="envs/prod/iam   error: no valid credential sources
+found infra/envs/prod/iam/backend.tf:2 ">
 <td>Scan error</td>
-<td class="sev sev-high">high</td>
-<td>new</td>
+<td><span class="sev sev-high">high</span></td>
+<td class="st st-new">new</td>
 <td>-</td>
 <td></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/iam/backend.tf#L2" target="_blank" rel="noopener noreferrer">infra/envs/prod/iam/backend.tf:2</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/iam/backend.tf#L2" target="_blank" rel="noopener noreferrer">infra/envs/prod/iam/backend.tf:2</a></td>
 <td><span class="msg">Error: no valid credential sources
 found</span></td>
 </tr>
@@ -159,71 +218,75 @@ found</span></td>
 </table></div>
 
 </details>
-<details class="root">
-<summary><span class="path">envs/prod/network</span><span class="small">1 pending, 1 acknowledged</span></summary>
-<div class="table-wrap"><table>
+<details class="root" id="root-envs-prod-network-91c0b22d" data-env="envs/prod">
+<summary><span class="cell s-pending" aria-hidden="true"></span><span class="path">envs/prod/network</span><span class="small">1 pending, 1 acknowledged</span></summary>
+<div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/prod" data-kind="pending" data-sev="1" data-status="persisting" data-q="envs/prod/network aws_lb.front idle_timeout">
+<tr data-env="envs/prod" data-kind="pending" data-sev="1" data-status="persisting" data-q="envs/prod/network aws_lb.front idle_timeout  infra/envs/prod/network/lb (old).tf:3 ">
 <td>Pending</td>
-<td class="sev sev-low">low</td>
-<td>persisting (5 scans)</td>
+<td><span class="sev sev-low">low</span></td>
+<td class="st st-persisting">persisting (5 scans)</td>
 <td><code>aws_lb.front</code></td>
 <td><code>idle_timeout</code></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/lb%20%28old%29.tf#L3" target="_blank" rel="noopener noreferrer">infra/envs/prod/network/lb (old).tf:3</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/lb%20%28old%29.tf#L3" target="_blank" rel="noopener noreferrer">infra/envs/prod/network/lb (old).tf:3</a></td>
 <td></td>
 </tr>
 </tbody>
 </table></div>
-<details class="acks"><summary>Acknowledged (1)</summary><div class="table-wrap"><table>
+<details class="acks"><summary>Acknowledged (1)</summary><div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/prod" data-kind="drift" data-sev="4" data-status="new" data-q="envs/prod/network aws_route_table.private route">
+<tr data-env="envs/prod" data-kind="drift" data-sev="4" data-status="new" data-q="envs/prod/network aws_route_table.private route  infra/envs/prod/network/rt.tf:9 ">
 <td>Drift</td>
-<td class="sev sev-critical">critical</td>
-<td>new</td>
+<td><span class="sev sev-critical">critical</span></td>
+<td class="st st-new">new</td>
 <td><code>aws_route_table.private</code></td>
 <td><code>route</code></td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/rt.tf#L9" target="_blank" rel="noopener noreferrer">infra/envs/prod/network/rt.tf:9</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/rt.tf#L9" target="_blank" rel="noopener noreferrer">infra/envs/prod/network/rt.tf:9</a></td>
 <td><span class="detail">acknowledged: not reverted by apply</span></td>
 </tr>
 </tbody>
 </table></div></details>
 </details>
-<details class="root">
-<summary><span class="path">envs/prod/queue</span><span class="small">1 pending</span></summary>
-<div class="table-wrap"><table>
+<details class="root" id="root-envs-prod-queue-db447816" data-env="envs/prod">
+<summary><span class="cell s-pending" aria-hidden="true"></span><span class="path">envs/prod/queue</span><span class="small">1 pending</span></summary>
+<div class="table-wrap"><table class="rows">
+<colgroup><col><col><col><col><col><col><col></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
 <tbody>
-<tr data-env="envs/prod" data-kind="pending" data-sev="0" data-status="unknown" data-q="envs/prod/queue aws_sqs_queue.jobs ">
+<tr data-env="envs/prod" data-kind="pending" data-sev="0" data-status="unknown" data-q="envs/prod/queue aws_sqs_queue.jobs   infra/envs/prod/queue/main.tf ">
 <td>Pending</td>
-<td class="sev sev-info">info</td>
-<td>unknown</td>
+<td><span class="sev sev-info">info</span></td>
+<td class="st st-unknown">unknown</td>
 <td><code>aws_sqs_queue.jobs</code></td>
 <td>delete, create</td>
-<td><a href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/queue/main.tf" target="_blank" rel="noopener noreferrer">infra/envs/prod/queue/main.tf</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/queue/main.tf" target="_blank" rel="noopener noreferrer">infra/envs/prod/queue/main.tf</a></td>
 <td></td>
 </tr>
 </tbody>
 </table></div>
 
 </details>
-<details class="root">
-<summary><span class="path">envs/prod/data</span><span class="small">clean</span></summary>
+<details class="root" id="root-envs-prod-data-c02663d0" data-env="envs/prod">
+<summary><span class="cell s-clean" aria-hidden="true"></span><span class="path">envs/prod/data</span><span class="small">clean</span></summary>
 
 
 </details>
 </section>
-<section class="env" aria-label="top level">
-<h2>(top level)</h2>
-<details class="root">
-<summary><span class="path">shared</span><span class="small">clean</span></summary>
+<section class="env" id="env-top-level-4cf1b0e4" data-env="-" aria-labelledby="h-env-top-level-4cf1b0e4">
+<h2 id="h-env-top-level-4cf1b0e4">(top level)</h2>
+<details class="root" id="root-shared-a4d26868" data-env="-">
+<summary><span class="cell s-clean" aria-hidden="true"></span><span class="path">shared</span><span class="small">clean</span></summary>
 
 
 </details>
 </section>
 </main>
 <footer>Generated 2026-11-04T12:00:05Z by driftscan. Attribute values are never included in a report.</footer>
+</div>
 <script>(function () {
   var form = document.getElementById("filters");
   if (!form) { return; }
@@ -235,11 +298,14 @@ found</span></td>
     status: document.getElementById("f-status"),
     q: document.getElementById("f-q")
   };
-  var rows = Array.prototype.slice.call(document.querySelectorAll("tr[data-kind]"));
-  var roots = Array.prototype.slice.call(document.querySelectorAll("details.root"));
-  var acks = Array.prototype.slice.call(document.querySelectorAll("details.acks"));
-  var envs = Array.prototype.slice.call(document.querySelectorAll("section.env"));
+  var all = function (sel) { return Array.prototype.slice.call(document.querySelectorAll(sel)); };
+  var rows = all("tr[data-kind]");
+  var roots = all("details.root");
+  var acks = all("details.acks");
+  var envs = all("section.env");
   var shown = document.getElementById("shown");
+
+  roots.concat(acks).forEach(function (d) { d.dataset.open = d.open ? "1" : "0"; });
 
   function visibleIn(el) {
     var n = 0;
@@ -250,10 +316,13 @@ found</span></td>
     return n;
   }
 
+  function total(el) { return el.querySelectorAll("tr[data-kind]").length; }
+
   function apply() {
     var env = ctl.env.value, kind = ctl.kind.value, status = ctl.status.value;
     var sev = parseInt(ctl.sev.value, 10), q = ctl.q.value.trim().toLowerCase();
-    var active = env !== "" || kind !== "" || status !== "" || sev > 0 || q !== "";
+    var rowActive = kind !== "" || status !== "" || sev > 0 || q !== "";
+    var active = rowActive || env !== "";
     var count = 0;
     rows.forEach(function (r) {
       var ok = (env === "" || r.dataset.env === env) &&
@@ -264,18 +333,53 @@ found</span></td>
       r.hidden = !ok;
       if (ok) { count++; }
     });
-    acks.forEach(function (d) { d.hidden = active && visibleIn(d) === 0; });
-    roots.forEach(function (d) { d.hidden = active && visibleIn(d) === 0; });
+    acks.forEach(function (d) {
+      var n = visibleIn(d);
+      d.hidden = rowActive && n === 0;
+      d.open = active ? n > 0 : d.dataset.open === "1";
+    });
+    roots.forEach(function (d) {
+      var n = visibleIn(d);
+      d.hidden = (env !== "" && d.dataset.env !== env) || (rowActive && total(d) > 0 && n === 0);
+      d.open = active ? n > 0 : d.dataset.open === "1";
+    });
     envs.forEach(function (s) {
-      s.hidden = active && s.querySelectorAll("details.root:not([hidden])").length === 0;
+      s.hidden = (env !== "" && s.dataset.env !== env) ||
+        (rowActive && s.querySelectorAll("details.root:not([hidden])").length === 0);
     });
     shown.textContent = count + " of " + rows.length + " Findings shown";
   }
 
-  form.addEventListener("input", apply);
-  form.addEventListener("change", apply);
+  function reset() {
+    ctl.env.value = "";
+    ctl.kind.value = "";
+    ctl.status.value = "";
+    ctl.sev.value = "0";
+    ctl.q.value = "";
+    apply();
+  }
+
+  function openTarget() {
+    var el = location.hash.length > 1 ? document.getElementById(location.hash.slice(1)) : null;
+    if (!el || !el.classList.contains("root")) { return; }
+    if (el.hidden) { reset(); }
+    el.open = true;
+    el.dataset.open = "1";
+    el.scrollIntoView();
+  }
+
+  ["env", "kind", "sev", "status"].forEach(function (k) { ctl[k].addEventListener("change", apply); });
+  ctl.q.addEventListener("input", apply);
   form.addEventListener("submit", function (e) { e.preventDefault(); });
+  all("a.envlink").forEach(function (a) {
+    a.addEventListener("click", function () {
+      ctl.env.value = a.dataset.env;
+      apply();
+    });
+  });
+  window.addEventListener("hashchange", openTarget);
   apply();
+  openTarget();
 })();
 </script>
 </body>
