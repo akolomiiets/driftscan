@@ -98,6 +98,9 @@ type emitFlags struct {
 	failOn     string
 	runURL     string
 	dir        string
+
+	annotations     string
+	annotatePending bool
 }
 
 func (e *emitFlags) register(fs *flag.FlagSet) {
@@ -110,6 +113,8 @@ func (e *emitFlags) register(fs *flag.FlagSet) {
 	fs.BoolVar(&e.otlp, "otlp", false, "send metrics to the OTLP/HTTP endpoint named by otlp.endpoint_env")
 	fs.BoolVar(&e.digest, "digest", false, "also alert on persisting Findings seen at least noise.digest_after times")
 	fs.StringVar(&e.failOn, "fail-on", "high", `exit 1 when an active Finding has at least this severity; "none" disables`)
+	fs.StringVar(&e.annotations, "annotations", "auto", `GitHub annotations on stdout: auto (on when GITHUB_ACTIONS is "true"), on or off`)
+	fs.BoolVar(&e.annotatePending, "annotate-pending", true, "include pending changes in GitHub annotations")
 	fs.StringVar(&e.runURL, "run-url", githubRunURL(), "link added to Slack messages")
 }
 
@@ -280,6 +285,18 @@ func merge(parts []finding.Report) finding.Report {
 	return out
 }
 
+func annotationsEnabled(mode string) (bool, error) {
+	switch mode {
+	case "on":
+		return true, nil
+	case "off":
+		return false, nil
+	case "auto":
+		return os.Getenv("GITHUB_ACTIONS") == "true", nil
+	}
+	return false, fmt.Errorf("unknown value %q (want auto, on or off)", mode)
+}
+
 func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Report, stdout, stderr io.Writer) int {
 	var threshold finding.Severity
 	failOff := e.failOn == "none"
@@ -289,6 +306,12 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 			fmt.Fprintln(stderr, "driftscan: -fail-on:", err)
 			return exitError
 		}
+	}
+
+	annotate, err := annotationsEnabled(e.annotations)
+	if err != nil {
+		fmt.Fprintln(stderr, "driftscan: -annotations:", err)
+		return exitError
 	}
 
 	var base *finding.Report
@@ -319,6 +342,11 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 		}
 	} else if e.markdown == "auto" {
 		fmt.Fprint(stdout, md)
+	}
+	if annotate {
+		for _, l := range output.Annotations(rep, sourceFromEnv(e.dir), e.annotatePending) {
+			fmt.Fprintln(stdout, l)
+		}
 	}
 	if e.sarif != "" {
 		b, err := output.SARIF(rep, version)

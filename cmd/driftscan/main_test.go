@@ -146,3 +146,61 @@ func TestAdviseRejectsNonPositiveMaxFindings(t *testing.T) {
 		}
 	}
 }
+
+func runReport(t *testing.T, extra ...string) (string, string, int) {
+	t.Helper()
+	dir := t.TempDir()
+	raw := filepath.Join(dir, "raw.json")
+	r := finding.Report{Version: finding.ReportVersion, Findings: []finding.Finding{
+		{Root: "a", Address: "aws_instance.x", Kind: finding.KindDrift, Severity: finding.SeverityHigh, Status: finding.StatusNew,
+			Paths: []string{"tags.Name"}, File: "main.tf", Line: 4},
+	}}
+	if err := writeReport(raw, r); err != nil {
+		t.Fatal(err)
+	}
+	args := append([]string{"report", "-out", filepath.Join(dir, "out.json"), "-markdown", "", "-fail-on", "none"}, extra...)
+	var stdout, stderr strings.Builder
+
+	code := run(append(args, raw), &stdout, &stderr)
+
+	return stdout.String(), stderr.String(), code
+}
+
+func TestAnnotationsAutoFollowsGithubActions(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "true")
+	stdout, _, _ := runReport(t)
+	if !strings.HasPrefix(stdout, "::error file=main.tf,line=4,title=driftscan%3A aws_instance.x::tags.Name") {
+		t.Errorf("auto with GITHUB_ACTIONS=true: stdout = %q", stdout)
+	}
+
+	t.Setenv("GITHUB_ACTIONS", "")
+	if stdout, _, _ := runReport(t); stdout != "" {
+		t.Errorf("auto without GITHUB_ACTIONS: stdout = %q", stdout)
+	}
+}
+
+func TestAnnotationsOnAndOff(t *testing.T) {
+	t.Setenv("GITHUB_ACTIONS", "")
+	if stdout, _, _ := runReport(t, "-annotations", "on"); !strings.HasPrefix(stdout, "::error ") {
+		t.Errorf("on: stdout = %q", stdout)
+	}
+
+	t.Setenv("GITHUB_ACTIONS", "true")
+	if stdout, _, _ := runReport(t, "-annotations", "off"); stdout != "" {
+		t.Errorf("off: stdout = %q", stdout)
+	}
+}
+
+func TestAnnotationsRejectsInvalidValue(t *testing.T) {
+	stdout, stderr, code := runReport(t, "-annotations", "yes")
+
+	if code != exitError {
+		t.Errorf("exit = %d, want %d", code, exitError)
+	}
+	if !strings.Contains(stderr, `-annotations: unknown value "yes" (want auto, on or off)`) {
+		t.Errorf("stderr = %q", stderr)
+	}
+	if stdout != "" {
+		t.Errorf("stdout = %q", stdout)
+	}
+}
