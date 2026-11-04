@@ -118,10 +118,10 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 </table>
 </div>
 <ul class="legend" aria-label="Legend for Root cells">
-<li><span class="cell s-error"></span>Scan error (hatched)</li>
-<li><span class="cell s-drift"></span>Drift (solid)</li>
-<li><span class="cell s-pending"></span>Pending only (outlined)</li>
-<li><span class="cell s-ack"></span>Acknowledged only (dashed)</li>
+<li><span class="cell s-error"></span>Scan error: Root could not be planned</li>
+<li><span class="cell s-drift"></span>Drift: changed outside Terraform, apply would revert it</li>
+<li><span class="cell s-pending"></span>Pending apply: code changes not applied yet</li>
+<li><span class="cell s-ack"></span>Acknowledged: changed outside Terraform, but apply would not change it back</li>
 <li><span class="cell s-clean"></span>Clean</li>
 </ul>
 </header>
