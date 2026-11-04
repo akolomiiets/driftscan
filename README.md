@@ -92,6 +92,35 @@ changed Findings, so they show up on the run and on the pull request diff. `-ann
 Acknowledged Findings are never annotated. GitHub shows at most 10 annotations per level and step, so
 driftscan emits the 9 most severe and one summary line for the rest.
 
+## HTML report
+
+`-html report.html` (on `scan` and `report`) writes one self-contained page: Findings grouped by environment
+(the Root path without its last segment) and Root, with filters by environment, kind, severity, status and text.
+It has no external requests (inline CSS and JS, a Content-Security-Policy meta tag), works without JavaScript, and
+never contains attribute values. Upload it as an artifact to read it later:
+
+```yaml
+  drift:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_wrapper: false
+      # configure read-only cloud credentials here (OIDC)
+      - uses: akolomiiets/driftscan@v0.2.0
+        with:
+          version: v0.2.0
+          # step summary is on by default, and so are annotations in Actions
+          args: scan -html driftscan-report.html
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: driftscan-html
+          path: driftscan-report.html
+          if-no-files-found: ignore
+```
+
 ## Owners (`enrich`)
 
 `driftscan enrich` adds an owner to each Finding of a raw Report, so Markdown and Slack show who to ask.

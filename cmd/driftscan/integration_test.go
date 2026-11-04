@@ -35,9 +35,10 @@ func TestIntegration(t *testing.T) {
 	tf(t, bin, root, "apply", "-auto-approve", "-input=false", "-no-color")
 
 	report := filepath.Join(dir, "report.json")
+	htmlPath := filepath.Join(dir, "report.html")
 	scan := func(baseline string) (int, finding.Report, string) {
 		var out, errb bytes.Buffer
-		args := []string{"scan", "-C", dir, "-out", report, "-markdown", "", "-fail-on", "medium"}
+		args := []string{"scan", "-C", dir, "-out", report, "-markdown", "", "-html", htmlPath, "-fail-on", "medium"}
 		if baseline != "" {
 			args = append(args, "-baseline", baseline)
 		}
@@ -75,6 +76,10 @@ func TestIntegration(t *testing.T) {
 	b, _ := os.ReadFile(report)
 	if strings.Contains(string(b), "SECRETVALUE") || strings.Contains(string(b), "9999") {
 		t.Error("report leaks a value")
+	}
+	h, _ := os.ReadFile(htmlPath)
+	if !strings.Contains(string(h), "local_file.config") || strings.Contains(string(h), "SECRETVALUE") || strings.Contains(string(h), "9999") {
+		t.Error("html report leaks a value or misses the Finding")
 	}
 	if err := os.Rename(report, base); err != nil {
 		t.Fatal(err)

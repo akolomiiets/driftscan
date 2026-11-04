@@ -92,6 +92,7 @@ type emitFlags struct {
 	out        string
 	markdown   string
 	sarif      string
+	html       string
 	slack      bool
 	otlp       bool
 	digest     bool
@@ -109,6 +110,7 @@ func (e *emitFlags) register(fs *flag.FlagSet) {
 	fs.StringVar(&e.out, "out", "driftscan-report.json", "where to write the compared Report (the next Baseline)")
 	fs.StringVar(&e.markdown, "markdown", "auto", `Markdown summary path; "auto" appends to $GITHUB_STEP_SUMMARY when set; "" disables`)
 	fs.StringVar(&e.sarif, "sarif", "", "SARIF 2.1.0 output path")
+	fs.StringVar(&e.html, "html", "", "self-contained HTML report path")
 	fs.BoolVar(&e.slack, "slack", false, "post alerts to the Slack webhook named by slack.webhook_env")
 	fs.BoolVar(&e.otlp, "otlp", false, "send metrics to the OTLP/HTTP endpoint named by otlp.endpoint_env")
 	fs.BoolVar(&e.digest, "digest", false, "also alert on persisting Findings seen at least noise.digest_after times")
@@ -355,6 +357,15 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 		}
 		if err != nil {
 			fail("sarif", err)
+		}
+	}
+	if e.html != "" {
+		b, err := output.HTML(rep, sourceFromEnv(e.dir), now)
+		if err == nil {
+			err = os.WriteFile(e.html, b, 0o644)
+		}
+		if err != nil {
+			fail("html", err)
 		}
 	}
 
