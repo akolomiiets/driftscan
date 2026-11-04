@@ -28,15 +28,74 @@ var htmlTemplate = template.Must(template.New("report").Parse(htmlTemplateText))
 type htmlRow struct {
 	Env, Kind, KindText, Severity, StatusKey, StatusText string
 	SevRank                                              int
-	Address, Paths, Actions, Loc, LocURL, Message        string
+	Paths, Actions, Loc, LocURL, Message                 string
 	AckText, Owner, ChangedBy, Search                    string
+	Address, LocParts                                    []string
+	ShownPaths, MorePaths                                []string
+	MoreLabel                                            string
 	Resolved                                             bool
+}
+
+// maxShownPaths is how many attribute paths a row lists before folding the rest into a details element.
+const maxShownPaths = 6
+
+type htmlTable struct {
+	Rows   []htmlRow
+	Widths []int
+	Detail bool
+}
+
+// tableOf builds a table with column widths (percent) computed from which optional columns have content.
+func tableOf(rows []htmlRow) htmlTable {
+	t := htmlTable{Rows: rows}
+	for _, r := range rows {
+		if r.Message != "" || r.AckText != "" || r.Owner != "" || r.ChangedBy != "" {
+			t.Detail = true
+			break
+		}
+	}
+	// Kind, Severity, Status, Resource, Attributes, Location, [Details]
+	t.Widths = []int{6, 8, 9, 20, 40, 17}
+	if t.Detail {
+		t.Widths = []int{6, 8, 9, 18, 26, 17, 16}
+	}
+	return t
+}
+
+// breakSegments splits s so that a line break may be inserted between consecutive segments:
+// after each sep byte, and also before "[" when breakBracket is set.
+func breakSegments(s, seps string, breakBracket bool) []string {
+	var out []string
+	start := 0
+	for i := 0; i < len(s); i++ {
+		switch {
+		case breakBracket && s[i] == '[' && i > start:
+			out = append(out, s[start:i])
+			start = i
+		case strings.IndexByte(seps, s[i]) >= 0 && i+1 < len(s):
+			out = append(out, s[start:i+1])
+			start = i + 1
+		}
+	}
+	return append(out, s[start:])
+}
+
+// commaList appends a comma to every item but the last, so a comma never wraps onto its own line.
+func commaList(items []string) []string {
+	out := make([]string, len(items))
+	for i, it := range items {
+		out[i] = it
+		if i < len(items)-1 {
+			out[i] += ","
+		}
+	}
+	return out
 }
 
 type htmlRoot struct {
 	Path, Summary, ID, EnvKey, State, Label string
 	Open                                    bool
-	Rows, AckRows                           []htmlRow
+	Rows, AckRows                           htmlTable
 	rank                                    int
 }
 
@@ -155,12 +214,12 @@ func headline(groups []htmlEnv) string {
 	switch {
 	case drift > 0 && errRoots > 0:
 		return plural(drift, "drifted resource", "drifted resources") + " in " + plural(driftRoots, "Root", "Roots") +
-			" across " + envs + ", " + failed
+			" across " + envs + ". " + failed + "."
 	case drift > 0:
 		return plural(drift, "drifted resource", "drifted resources") + " in " + plural(driftRoots, "Root", "Roots") +
 			" across " + envs
 	case errRoots > 0:
-		return failed + ", no drift found in the rest"
+		return failed + ". No drift found in the rest."
 	default:
 		return "No drift across " + envs
 	}
@@ -169,14 +228,18 @@ func headline(groups []htmlEnv) string {
 func metaLine(r finding.Report, groups []htmlEnv) string {
 	tool := "driftscan"
 	if r.Tool != "" {
-		tool += " " + r.Tool
+		tool = r.Tool
+	}
+	dur := r.Duration.Round(100 * time.Millisecond)
+	if r.Duration >= time.Minute {
+		dur = r.Duration.Round(time.Second)
 	}
 	n := 0
 	for _, g := range groups {
 		n += len(g.Roots)
 	}
 	s := fmt.Sprintf("%s scanned %s on %s in %s.", tool, plural(n, "Root", "Roots"),
-		r.StartedAt.UTC().Format("2006-01-02 15:04 UTC"), r.Duration.Round(100*time.Millisecond))
+		r.StartedAt.UTC().Format("2006-01-02 15:04 UTC"), dur)
 	if r.Compared {
 		var added, changed int
 		for _, f := range r.Findings {
@@ -251,17 +314,19 @@ func htmlGroups(r finding.Report, src Source) []htmlEnv {
 		root := htmlRoot{Path: rp, Summary: rootSummary(outcome[rp], c), ID: anchorID("root-", rp), EnvKey: envKey(env),
 			State: rootState(outcome[rp], c)}
 		root.Label = rp + ": " + root.Summary
+		var rows, ackRows []htmlRow
 		for _, f := range fs {
 			row := htmlRowOf(f, src)
 			if f.Acknowledged && f.Active() {
-				root.AckRows = append(root.AckRows, row)
+				ackRows = append(ackRows, row)
 				continue
 			}
-			root.Rows = append(root.Rows, row)
+			rows = append(rows, row)
 			if f.Active() && (f.Kind == finding.KindScanError || f.Kind == finding.KindDrift) {
 				root.Open = true
 			}
 		}
+		root.Rows, root.AckRows = tableOf(rows), tableOf(ackRows)
 		switch {
 		case root.Open:
 			root.rank = 0
@@ -334,7 +399,7 @@ func htmlRowOf(f finding.Finding, src Source) htmlRow {
 		SevRank:    int(f.Severity),
 		StatusKey:  string(f.Status),
 		StatusText: statusText(f),
-		Address:    f.Address,
+		Address:    breakSegments(f.Address, ".", true),
 		Paths:      strings.Join(f.Paths, ", "),
 		Actions:    strings.Join(f.Actions, ", "),
 		LocURL:     src.URL(f),
@@ -342,6 +407,13 @@ func htmlRowOf(f finding.Finding, src Source) htmlRow {
 		Owner:      f.Owner,
 		ChangedBy:  f.ChangedBy,
 		Resolved:   f.Status == finding.StatusResolved,
+	}
+	paths := commaList(f.Paths)
+	if len(paths) > maxShownPaths {
+		row.ShownPaths, row.MorePaths = paths[:maxShownPaths], paths[maxShownPaths:]
+		row.MoreLabel = fmt.Sprintf("+%d more", len(row.MorePaths))
+	} else {
+		row.ShownPaths = paths
 	}
 	if row.StatusKey == "" {
 		row.StatusKey = "none"
@@ -352,6 +424,7 @@ func htmlRowOf(f finding.Finding, src Source) htmlRow {
 			row.Loc += ":" + strconv.Itoa(f.Line)
 		}
 	}
+	row.LocParts = breakSegments(row.Loc, "/", false)
 	if f.Acknowledged {
 		row.AckText = "acknowledged: " + ackText(f.AckReason)
 	}

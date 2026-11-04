@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -15,8 +16,8 @@ var htmlGenerated = time.Date(2026, 11, 4, 12, 0, 5, 0, time.UTC)
 
 func htmlGoldenReport() finding.Report {
 	return finding.Report{
-		Version: 1, Tool: "v0.2.0", Compared: true,
-		StartedAt: time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC), Duration: 42 * time.Second,
+		Version: 1, Tool: "driftscan v0.2.0", Compared: true,
+		StartedAt: time.Date(2026, 11, 4, 12, 0, 0, 0, time.UTC), Duration: 351700 * time.Millisecond,
 		Roots: []finding.RootResult{
 			{Path: "envs/dev/network", Outcome: finding.RootDrifted},
 			{Path: "envs/dev/data", Outcome: finding.RootDrifted},
@@ -35,6 +36,9 @@ func htmlGoldenReport() finding.Report {
 			{Root: "envs/dev/data", Address: "aws_s3_bucket.logs", Kind: finding.KindDrift, Paths: []string{"versioning[0].enabled", "tags.Team"},
 				Severity: finding.SeverityMedium, Status: finding.StatusChanged, SeenCount: 2, File: "envs/dev/data/s3.tf", Line: 30,
 				Owner: "@org/data", ChangedBy: "alice"},
+			{Root: "envs/dev/data", Address: "module.rds_core.module.parameters.aws_db_parameter_group.main[\"primary\"]", Kind: finding.KindDrift,
+				Paths: manyPaths(15), Severity: finding.SeverityMedium, Status: finding.StatusPersisting, SeenCount: 2,
+				File: "envs/dev/data/modules/rds_core/parameters/parameter_group.tf", Line: 44},
 			{Root: "envs/dev/data", Address: "aws_s3_bucket.assets", Kind: finding.KindDrift, Paths: []string{"tags.Name"},
 				Severity: finding.SeverityInfo, Status: finding.StatusNew, Acknowledged: true, AckReason: finding.AckIgnoreChanges,
 				File: "envs/dev/data/s3.tf", Line: 5},
@@ -49,6 +53,77 @@ func htmlGoldenReport() finding.Report {
 			{Root: "envs/prod/queue", Address: "aws_sqs_queue.jobs", Kind: finding.KindPending, Actions: []string{"delete", "create"},
 				Severity: finding.SeverityInfo, Status: finding.StatusUnknown, File: "envs/prod/queue/main.tf"},
 		},
+	}
+}
+
+func manyPaths(n int) []string {
+	var p []string
+	for i := 0; i < n; i++ {
+		p = append(p, "parameter["+strconv.Itoa(i)+"].apply_method")
+	}
+	return p
+}
+
+func TestHTMLFoldsPathsAfterSix(t *testing.T) {
+	r := finding.Report{Roots: []finding.RootResult{{Path: "envs/dev/data", Outcome: finding.RootDrifted}},
+		Findings: []finding.Finding{{Root: "envs/dev/data", Address: "aws_db_parameter_group.main", Kind: finding.KindDrift,
+			Paths: manyPaths(15), Severity: finding.SeverityLow}}}
+
+	b, err := HTML(r, Source{}, htmlGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := string(b)
+	fold := strings.Index(out, `<details class="more">`)
+
+	if fold < 0 || !strings.Contains(out, "<summary>&#43;9 more</summary>") {
+		t.Fatal("want a +9 more fold")
+	}
+	if got := strings.Count(out[:fold], `<span class="p">`); got != 6 {
+		t.Errorf("visible paths = %d, want 6", got)
+	}
+	if got := strings.Count(out[fold:], `<span class="p">`); got != 9 {
+		t.Errorf("folded paths = %d, want 9", got)
+	}
+	if !strings.Contains(out, "parameter[14].apply_method") {
+		t.Error("last path missing from output")
+	}
+	if !strings.Contains(out, `data-q="envs/dev/data aws_db_parameter_group.main parameter[0].apply_method,`) ||
+		!strings.Contains(out, "parameter[14].apply_method ") {
+		t.Error("search text must cover all paths")
+	}
+}
+
+func TestHTMLOmitsEmptyDetailsColumn(t *testing.T) {
+	r := finding.Report{Roots: []finding.RootResult{{Path: "a/b", Outcome: finding.RootDrifted}},
+		Findings: []finding.Finding{{Root: "a/b", Address: "aws_x.y", Kind: finding.KindDrift, Severity: finding.SeverityLow}}}
+
+	b, err := HTML(r, Source{}, htmlGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if strings.Contains(string(b), `<th scope="col">Details</th>`) {
+		t.Error("Details column rendered with no content")
+	}
+}
+
+func TestMetaLineUsesToolOnceAndRoundsLongDurations(t *testing.T) {
+	r := finding.Report{Tool: "driftscan v0.2.0", StartedAt: htmlGenerated, Duration: 5*time.Minute + 51700*time.Millisecond}
+
+	got := metaLine(r, nil)
+
+	if !strings.HasPrefix(got, "driftscan v0.2.0 scanned 0 Roots on ") || !strings.Contains(got, " in 5m52s.") {
+		t.Errorf("meta line = %q", got)
+	}
+}
+
+func TestBreakSegments(t *testing.T) {
+	got := breakSegments("module.a.aws_x.y[0].z", ".", true)
+
+	want := []string{"module.", "a.", "aws_x.", "y", "[0].", "z"}
+	if strings.Join(got, "|") != strings.Join(want, "|") {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
 
@@ -177,8 +252,8 @@ func TestHeadline(t *testing.T) {
 		want   string
 	}{
 		"drift":  {[]htmlEnv{{Roots: []htmlRoot{drift}, Counts: Counts{Drift: 1}}}, "1 drifted resource in 1 Root across 1 environment"},
-		"errors": {[]htmlEnv{{Roots: []htmlRoot{failed}}}, "1 Root could not be planned, no drift found in the rest"},
-		"both":   {[]htmlEnv{{Roots: []htmlRoot{drift, failed}, Counts: Counts{Drift: 3}}}, "3 drifted resources in 1 Root across 1 environment, 1 Root could not be planned"},
+		"errors": {[]htmlEnv{{Roots: []htmlRoot{failed}}}, "1 Root could not be planned. No drift found in the rest."},
+		"both":   {[]htmlEnv{{Roots: []htmlRoot{drift, failed}, Counts: Counts{Drift: 3}}}, "3 drifted resources in 1 Root across 1 environment. 1 Root could not be planned."},
 		"clean":  {[]htmlEnv{{}, {}}, "No drift across 2 environments"},
 	} {
 		if got := headline(tc.groups); got != tc.want {
