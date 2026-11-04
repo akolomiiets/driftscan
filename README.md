@@ -306,6 +306,18 @@ driftscan unmanaged -C infra -aggregator org-aggregator -fail-over 50
 | Install | static binary + provenance | pip at runtime | varies | SaaS |
 | Remediation | no, by design | yes | yes | yes |
 
+## Security
+
+See [SECURITY.md](SECURITY.md) for supported versions and how to report a vulnerability. To verify a release binary,
+check it against `checksums.txt` and its build provenance:
+
+```
+sha256sum -c --ignore-missing checksums.txt
+gh attestation verify driftscan_linux_amd64 --repo akolomiiets/driftscan
+```
+
+The GitHub Action does both by default (`verify-attestation`).
+
 ## License
 
 Copyright 2026 Oleksandr Kolomiiets. Licensed under Apache-2.0.

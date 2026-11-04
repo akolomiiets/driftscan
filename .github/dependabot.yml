@@ -1,0 +1,32 @@
+version: 2
+
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # Cooldown applies to version updates only. The Dependabot options reference
+    # says the default cooldown "does not apply to security updates", so security
+    # PRs are not delayed. semver-*-days keys are supported for gomod.
+    cooldown:
+      default-days: 7
+      semver-major-days: 30
+    groups:
+      go-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
+    # semver-*-days keys are not supported for github-actions, so only
+    # default-days applies (same security-updates note as above).
+    cooldown:
+      default-days: 7
+    groups:
+      actions-minor-patch:
+        patterns: ["*"]
+        update-types: [minor, patch]

@@ -28,7 +28,7 @@ runs:
         VERIFY: ${{ inputs.verify-attestation }}
         GH_TOKEN: ${{ github.token }}
         ACTION_REPO: ${{ github.action_repository }}
-      run: |
+      run: | # zizmor: ignore[github-env] only a RUNNER_TEMP dir holding the checksum-verified binary is added to PATH
         set -euo pipefail
         repo="${ACTION_REPO:-akolomiiets/driftscan}"
         case "${RUNNER_OS}-${RUNNER_ARCH}" in
