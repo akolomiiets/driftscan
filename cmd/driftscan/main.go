@@ -97,6 +97,7 @@ type emitFlags struct {
 	digest     bool
 	failOn     string
 	runURL     string
+	dir        string
 }
 
 func (e *emitFlags) register(fs *flag.FlagSet) {
@@ -120,6 +121,32 @@ func githubRunURL() string {
 	return s + "/" + r + "/actions/runs/" + id
 }
 
+// sourceFromEnv builds the link base for source locations from the GitHub Actions environment.
+func sourceFromEnv(dir string) output.Source {
+	var src output.Source
+	server, repo, sha := os.Getenv("GITHUB_SERVER_URL"), os.Getenv("GITHUB_REPOSITORY"), os.Getenv("GITHUB_SHA")
+	if server != "" && repo != "" && sha != "" {
+		src.BlobURL = strings.TrimRight(server, "/") + "/" + repo + "/blob/" + sha
+	}
+	ws := os.Getenv("GITHUB_WORKSPACE")
+	if ws == "" {
+		return src
+	}
+	absWs, err1 := filepath.Abs(ws)
+	absDir, err2 := filepath.Abs(dir)
+	if err1 != nil || err2 != nil {
+		return src
+	}
+	rel, err := filepath.Rel(absWs, absDir)
+	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		return src
+	}
+	if rel = filepath.ToSlash(rel); rel != "." {
+		src.Prefix = rel
+	}
+	return src
+}
+
 func loadConfig(path, dir string) (config.Config, error) {
 	if path != "" {
 		return config.Load(path, true)
@@ -139,6 +166,7 @@ func cmdScan(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	if err := fs.Parse(args); err != nil {
 		return exitError
 	}
+	e.dir = *dir
 
 	cfg, err := loadConfig(e.configPath, *dir)
 	if err != nil {
@@ -185,11 +213,13 @@ func cmdScan(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 	fs := flag.NewFlagSet("report", flag.ContinueOnError)
 	fs.SetOutput(stderr)
+	dir := fs.String("C", ".", "directory the Reports were scanned from; source paths are relative to it")
 	var e emitFlags
 	e.register(fs)
 	if err := fs.Parse(args); err != nil {
 		return exitError
 	}
+	e.dir = *dir
 	if fs.NArg() == 0 {
 		fmt.Fprintln(stderr, "driftscan report: give at least one raw Report")
 		return exitError
@@ -282,7 +312,7 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 		fmt.Fprintf(stderr, "driftscan: %s: %v\n", what, err)
 		code = exitError
 	}
-	md := output.Markdown(rep)
+	md := output.Markdown(rep, sourceFromEnv(e.dir))
 	if path := markdownPath(e.markdown); path != "" {
 		if err := appendFile(path, md); err != nil {
 			fail("markdown", err)

@@ -82,7 +82,9 @@ the next run alerts again.
 
 Large repos: run `scan -shard i/n -raw-out raw-i.json` in a matrix job, then
 `driftscan report -baseline ... raw-*.json` in one job. A merge missing a shard is marked partial and
-does not resolve anything for the Roots it did not see.
+does not resolve anything for the Roots it did not see. Pass `report -C dir` (the directory the shards scanned,
+default `.`) so the Markdown summary can link source locations; in GitHub Actions it links `file:line` to the commit
+when `GITHUB_SERVER_URL`, `GITHUB_REPOSITORY` and `GITHUB_SHA` are set.
 
 ## Owners (`enrich`)
 
