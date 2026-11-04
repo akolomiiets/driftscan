@@ -1,0 +1,398 @@
+{
+ "format_version": "1.2",
+ "terraform_version": "1.16.3",
+ "resource_drift": [
+  {
+   "address": "aws_security_group.rules",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "rules",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "name": "a",
+     "ingress": [
+      {
+       "cidr_blocks": [
+        "10.0.0.0/8"
+       ],
+       "from_port": 443
+      }
+     ]
+    },
+    "after": {
+     "name": "a",
+     "ingress": [
+      {
+       "cidr_blocks": [
+        "SECRET-0.0.0.0/0"
+       ],
+       "from_port": 443
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "module.iam.aws_iam_role.svc[0]",
+   "mode": "managed",
+   "type": "aws_iam_role",
+   "name": "svc",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "inline_policy": [
+      {
+       "name": "p",
+       "policy": "1"
+      }
+     ]
+    },
+    "after": {
+     "inline_policy": [
+      {
+       "name": "p",
+       "policy": "SECRET-2"
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_lambda_function.fn",
+   "mode": "managed",
+   "type": "aws_lambda_function",
+   "name": "fn",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "environment": [],
+     "timeout": 3
+    },
+    "after": {
+     "environment": [
+      {
+       "variables": {
+        "K": "SECRET-v"
+       }
+      }
+     ],
+     "timeout": 3
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_s3_bucket.tagged",
+   "mode": "managed",
+   "type": "aws_s3_bucket",
+   "name": "tagged",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "tags_all": {
+      "A": "1"
+     },
+     "policy": "x"
+    },
+    "after": {
+     "tags_all": {
+      "A": "SECRET-2"
+     },
+     "policy": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_db_instance.partial",
+   "mode": "managed",
+   "type": "aws_db_instance",
+   "name": "partial",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "latest_restorable_time": "t1",
+     "port": 5432
+    },
+    "after": {
+     "latest_restorable_time": "SECRET-t2",
+     "port": 5433
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_route_table.gone",
+   "mode": "managed",
+   "type": "aws_route_table",
+   "name": "gone",
+   "change": {
+    "actions": [
+     "delete"
+    ],
+    "before": {
+     "id": "rtb-1"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.ignored",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "ignored",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "tags": {
+      "A": "1"
+     }
+    },
+    "after": {
+     "tags": {
+      "A": "SECRET-2"
+     }
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.noplan",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "noplan",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  }
+ ],
+ "resource_changes": [
+  {
+   "address": "aws_security_group.rules",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "rules",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "before": {
+     "name": "a",
+     "ingress": [
+      {
+       "cidr_blocks": [
+        "SECRET-0.0.0.0/0"
+       ],
+       "from_port": 443
+      }
+     ]
+    },
+    "after": {
+     "name": "a",
+     "ingress": [
+      {
+       "cidr_blocks": [
+        "SECRET-0.0.0.0/0"
+       ],
+       "from_port": 443
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "module.iam.aws_iam_role.svc[0]",
+   "mode": "managed",
+   "type": "aws_iam_role",
+   "name": "svc",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "inline_policy": [
+      {
+       "name": "p",
+       "policy": "SECRET-2"
+      }
+     ],
+     "max_session_duration": 3600
+    },
+    "after": {
+     "inline_policy": [
+      {
+       "name": "p",
+       "policy": "SECRET-2"
+      }
+     ],
+     "max_session_duration": 7200
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_lambda_function.fn",
+   "mode": "managed",
+   "type": "aws_lambda_function",
+   "name": "fn",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "environment": [
+      {
+       "variables": {
+        "K": "SECRET-v"
+       }
+      }
+     ],
+     "timeout": 3
+    },
+    "after": {
+     "environment": [],
+     "timeout": 3
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_s3_bucket.tagged",
+   "mode": "managed",
+   "type": "aws_s3_bucket",
+   "name": "tagged",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "tags_all": {
+      "A": "SECRET-2"
+     },
+     "policy": "SECRET-y"
+    },
+    "after": {
+     "tags_all": {
+      "A": "1"
+     },
+     "policy": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_db_instance.partial",
+   "mode": "managed",
+   "type": "aws_db_instance",
+   "name": "partial",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "latest_restorable_time": "SECRET-t2",
+     "port": 5433
+    },
+    "after": {
+     "latest_restorable_time": "SECRET-t2",
+     "port": 5432
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_route_table.gone",
+   "mode": "managed",
+   "type": "aws_route_table",
+   "name": "gone",
+   "change": {
+    "actions": [
+     "create"
+    ],
+    "before": null,
+    "after": {
+     "id": "rtb-1"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.ignored",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "ignored",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "before": {
+     "tags": {
+      "A": "SECRET-2"
+     }
+    },
+    "after": {
+     "tags": {
+      "A": "SECRET-2"
+     }
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  }
+ ]
+}

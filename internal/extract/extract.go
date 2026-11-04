@@ -17,11 +17,18 @@ import (
 // MaxPathDepth caps attribute paths so a large nested diff yields a few readable paths.
 const MaxPathDepth = 3
 
-// Drift reads the JSON of `plan -refresh-only` and returns one Drift Finding per drifted managed resource.
+// Drift reads the JSON of a normal plan (refresh on) and returns one Drift Finding per drifted managed
+// resource. A Finding is acknowledged when applying the code would not undo the drift (ADR-0011).
 func Drift(planJSON []byte, root string, info hclroot.Info) ([]finding.Finding, error) {
 	p, err := parse(planJSON)
 	if err != nil {
 		return nil, err
+	}
+	planned := map[string]*tfjson.ResourceChange{}
+	for _, rc := range p.ResourceChanges {
+		if rc != nil {
+			planned[rc.Address] = rc
+		}
 	}
 	var out []finding.Finding
 	for _, rc := range p.ResourceDrift {
@@ -29,7 +36,7 @@ func Drift(planJSON []byte, root string, info hclroot.Info) ([]finding.Finding, 
 		if !ok {
 			continue
 		}
-		f.Acknowledged, f.AckReason = acknowledge(f, info.IgnoredPaths(f.Address), unsetInConfig(p.Config, rc, info))
+		f.Acknowledged, f.AckReason = acknowledge(f, info.IgnoredPaths(f.Address), planned[f.Address])
 		out = append(out, f)
 	}
 	return out, nil
@@ -234,35 +241,49 @@ func equalJSON(a, b any) bool {
 	}
 }
 
-// acknowledge reports whether every drifted path is either covered by lifecycle.ignore_changes or
-// not set in the resource's configuration, and which of the two applied.
-func acknowledge(f finding.Finding, ignored []string, unset func(path string) bool) (bool, string) {
-	if len(f.Paths) == 0 {
+// acknowledge decides whether applying the code would leave the drift alone. Every drifted path in
+// lifecycle.ignore_changes gives "ignore_changes"; otherwise the drift is "not_reverted" when the
+// plan has no change on the resource, or an update touching none of the drifted paths.
+func acknowledge(f finding.Finding, ignored []string, planned *tfjson.ResourceChange) (bool, string) {
+	if allIgnored(f, ignored) {
+		return true, finding.AckIgnoreChanges
+	}
+	if planned == nil || planned.Change == nil {
+		return true, finding.AckNotReverted
+	}
+	a := planned.Change.Actions
+	if len(a) == 0 || a.NoOp() || a.Read() {
+		return true, finding.AckNotReverted
+	}
+	if !a.Update() || len(f.Paths) == 0 {
 		return false, ""
+	}
+	for _, dp := range f.Paths {
+		for _, pp := range changedPaths(planned.Change) {
+			if covered(dp, []string{pp}) || covered(pp, []string{dp}) {
+				return false, ""
+			}
+		}
+	}
+	return true, finding.AckNotReverted
+}
+
+// allIgnored is true when every drifted path is covered by lifecycle.ignore_changes.
+func allIgnored(f finding.Finding, ignored []string) bool {
+	if len(ignored) == 0 || len(f.Paths) == 0 {
+		return false
 	}
 	for _, ig := range ignored {
 		if ig == "*" {
-			return true, finding.AckIgnoreChanges
+			return true
 		}
 	}
-	byIgnore, byConfig := false, false
 	for _, p := range f.Paths {
-		switch {
-		case covered(p, ignored):
-			byIgnore = true
-		case unset(p):
-			byConfig = true
-		default:
-			return false, ""
+		if !covered(p, ignored) {
+			return false
 		}
 	}
-	switch {
-	case byIgnore && byConfig:
-		return true, finding.AckMixed
-	case byConfig:
-		return true, finding.AckNotInConfig
-	}
-	return true, finding.AckIgnoreChanges
+	return true
 }
 
 func covered(p string, ignored []string) bool {
@@ -272,94 +293,4 @@ func covered(p string, ignored []string) bool {
 		}
 	}
 	return false
-}
-
-// unsetInConfig returns a test for "this drifted path is provably not set in the resource's
-// configuration" (ADR-0011). It answers false whenever that cannot be proven, so the Finding stays Drift.
-func unsetInConfig(cfg *tfjson.Config, rc *tfjson.ResourceChange, info hclroot.Info) func(string) bool {
-	never := func(string) bool { return false }
-	if cfg == nil || rc == nil || rc.Change == nil {
-		return never
-	}
-	res, ok := findConfigResource(cfg, rc.Address)
-	if !ok {
-		return never
-	}
-	names, known := info.DynamicBlockNames(rc.Address)
-	dynamic := map[string]bool{}
-	for _, n := range names {
-		dynamic[n] = true
-	}
-	return func(path string) bool {
-		name := topName(path)
-		if name == "" {
-			return false
-		}
-		if _, set := res.Expressions[name]; set || dynamic[name] {
-			return false
-		}
-		// `dynamic` blocks are absent from expressions; when the source was not read, a
-		// block-shaped value may be one.
-		return known || !(blockShaped(child(rc.Change.Before, name), child(rc.Change.After, name)))
-	}
-}
-
-// topName is the top-level attribute or block name of a path, "" when it cannot be read.
-func topName(path string) string {
-	if path == "" || path[0] == '[' || path == "*" {
-		return ""
-	}
-	if i := strings.IndexAny(path, ".["); i >= 0 {
-		return path[:i]
-	}
-	return path
-}
-
-// blockShaped is true for a list or map holding objects, how nested blocks appear in a plan.
-func blockShaped(vals ...any) bool {
-	for _, v := range vals {
-		switch t := v.(type) {
-		case []any:
-			for _, e := range t {
-				if _, ok := e.(map[string]any); ok {
-					return true
-				}
-			}
-		case map[string]any:
-			for _, e := range t {
-				switch e.(type) {
-				case map[string]any, []any:
-					return true
-				}
-			}
-		}
-	}
-	return false
-}
-
-// findConfigResource follows a plan address such as `module.a[0].module.b["k"].aws_x.y[1]` through
-// the configuration's module_calls, ignoring instance keys.
-func findConfigResource(cfg *tfjson.Config, address string) (*tfjson.ConfigResource, bool) {
-	if cfg.RootModule == nil {
-		return nil, false
-	}
-	segs := hclroot.SplitAddress(address)
-	mod := cfg.RootModule
-	for len(segs) >= 4 && segs[0] == "module" {
-		call := mod.ModuleCalls[hclroot.StripKey(segs[1])]
-		if call == nil || call.Module == nil {
-			return nil, false
-		}
-		mod, segs = call.Module, segs[2:]
-	}
-	if len(segs) != 2 {
-		return nil, false
-	}
-	typ, name := hclroot.StripKey(segs[0]), hclroot.StripKey(segs[1])
-	for _, r := range mod.Resources {
-		if r.Mode == tfjson.ManagedResourceMode && r.Type == typ && r.Name == name {
-			return r, true
-		}
-	}
-	return nil, false
 }

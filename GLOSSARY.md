@@ -48,7 +48,7 @@ A match that drops a Finding before it is reported, for known noise.
 _Avoid_: suppression, exclusion
 
 **Acknowledged**:
-Drift only on attributes Terraform will not revert: ones the code tells it to ignore (`lifecycle.ignore_changes`) or ones the resource's configuration never sets (managed by another resource, or computed-only). Reported at info Severity, never as Drift that needs action. The reason is `ignore_changes`, `not_in_config` or `mixed`.
+Drift that applying the code would not undo: Terraform's own plan leaves the drifted attributes alone, because they are in `lifecycle.ignore_changes` (`ignore_changes`) or the code does not manage them (`not_reverted`). Reported at info Severity, never as Drift that needs action.
 
 ### Context on a Finding
 

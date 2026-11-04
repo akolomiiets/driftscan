@@ -68,7 +68,7 @@ func TestIntegration(t *testing.T) {
 		t.Fatalf("drift scan: code %d findings %+v\n%s", code, r.Findings, log)
 	}
 	f := r.Findings[0]
-	if f.Kind != finding.KindDrift || f.Address != "local_file.config" || f.Status != finding.StatusNew ||
+	if f.Kind != finding.KindDrift || f.Acknowledged || f.Address != "local_file.config" || f.Status != finding.StatusNew ||
 		f.File != "app/main.tf" || f.Line != 12 {
 		t.Errorf("drift finding = %+v", f)
 	}

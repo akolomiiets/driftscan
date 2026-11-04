@@ -43,5 +43,31 @@
       "change": {"actions": ["update"], "before": {"id": "1"}, "after": {"id": "2"}}
     }
   ],
-  "resource_changes": []
+  "resource_changes": [
+    {
+      "address": "aws_security_group.web",
+      "mode": "managed", "type": "aws_security_group", "name": "web",
+      "change": {
+        "actions": ["update"],
+        "before": {"description": "web", "ingress": [{"cidr_blocks": ["10.0.0.0/8", "0.0.0.0/0"], "from_port": 443}], "tags": {"Owner": "b"}},
+        "after":  {"description": "web", "ingress": [{"cidr_blocks": ["10.0.0.0/8"], "from_port": 443}], "tags": {"Owner": "a"}},
+        "before_sensitive": {}, "after_sensitive": {}
+      }
+    },
+    {
+      "address": "aws_db_instance.main",
+      "mode": "managed", "type": "aws_db_instance", "name": "main",
+      "change": {
+        "actions": ["update"],
+        "before": {"password": "rotated-SECRET", "settings": {"key-SECRETKEY": "v2"}, "port": 5432},
+        "after":  {"password": "hunter2-SECRET", "settings": {"key-SECRETKEY": "v1"}, "port": 5432},
+        "before_sensitive": {"password": true, "settings": true}, "after_sensitive": {"password": true, "settings": true}
+      }
+    },
+    {
+      "address": "module.vpc.aws_route_table.private",
+      "mode": "managed", "type": "aws_route_table", "name": "private",
+      "change": {"actions": ["create"], "before": null, "after": {"id": "rtb-1"}}
+    }
+  ]
 }

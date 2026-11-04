@@ -69,8 +69,7 @@ func (s *Severity) UnmarshalText(b []byte) error {
 // Values of Finding.AckReason.
 const (
 	AckIgnoreChanges = "ignore_changes"
-	AckNotInConfig   = "not_in_config"
-	AckMixed         = "mixed"
+	AckNotReverted   = "not_reverted"
 )
 
 // Finding is one reported fact about one resource, or about a whole Root for a Scan error.
@@ -85,9 +84,9 @@ type Finding struct {
 	Severity Severity `json:"severity"`
 	Status   Status   `json:"status,omitempty"`
 	// Acknowledged marks drift only on attributes that Terraform will not revert: listed in
-	// lifecycle.ignore_changes or not set in the resource's configuration.
+	// lifecycle.ignore_changes or that the plan would not change.
 	Acknowledged bool `json:"acknowledged,omitempty"`
-	// AckReason says why: AckIgnoreChanges, AckNotInConfig or AckMixed.
+	// AckReason says why: AckIgnoreChanges or AckNotReverted.
 	AckReason string `json:"ack_reason,omitempty"`
 	Message   string `json:"message,omitempty"`
 	// File and Line point at the resource or module block, else the backend block (slash path).

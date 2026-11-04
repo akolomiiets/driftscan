@@ -144,15 +144,10 @@ func writeAdvice(b *strings.Builder, rows []finding.Finding) {
 }
 
 func ackText(reason string) string {
-	switch reason {
-	case finding.AckIgnoreChanges:
-		return "lifecycle.ignore_changes"
-	case finding.AckNotInConfig:
-		return "not set in config"
-	case finding.AckMixed:
-		return "ignore_changes + not set in config"
+	if reason == finding.AckNotReverted {
+		return "not reverted by apply"
 	}
-	return ""
+	return "lifecycle.ignore_changes"
 }
 
 func statusText(f finding.Finding) string {

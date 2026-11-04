@@ -63,9 +63,9 @@ const emptyPlan = `{"format_version":"1.2","terraform_version":"1.16.3"}`
 func TestRunCollectsFindingsAndErrors(t *testing.T) {
 	f := &fake{
 		plans: map[string]runner.Plans{
-			"a": {RefreshOnly: fixture(t, "refresh_only.json"), Pending: fixture(t, "pending.json")},
-			"b": {RefreshOnly: []byte(emptyPlan), Pending: []byte(emptyPlan)},
-			"d": {RefreshOnly: []byte("not json")},
+			"a": {Drift: fixture(t, "drift.json"), Pending: fixture(t, "pending.json")},
+			"b": {Drift: []byte(emptyPlan), Pending: []byte(emptyPlan)},
+			"d": {Drift: []byte("not json")},
 		},
 		errs: map[string]error{"c": errors.New("Error: No valid credential sources found")},
 	}
@@ -102,7 +102,7 @@ func TestConcurrencyLimitAndTimeout(t *testing.T) {
 	var roots []discover.Root
 	for _, p := range []string{"1", "2", "3", "4", "5", "6"} {
 		roots = append(roots, discover.Root{Path: p})
-		f.plans[p] = runner.Plans{RefreshOnly: []byte(emptyPlan)}
+		f.plans[p] = runner.Plans{Drift: []byte(emptyPlan)}
 	}
 	cfg := config.Default()
 	cfg.Concurrency = 2
@@ -119,7 +119,7 @@ func TestConcurrencyLimitAndTimeout(t *testing.T) {
 }
 
 func TestPendingDisabledSkipsSecondPlan(t *testing.T) {
-	f := &fake{plans: map[string]runner.Plans{"a": {RefreshOnly: []byte(emptyPlan)}}}
+	f := &fake{plans: map[string]runner.Plans{"a": {Drift: []byte(emptyPlan)}}}
 	cfg, _ := config.Parse([]byte("pending:\n  enabled: false\n"))
 	Run(context.Background(), cfg, []discover.Root{{Path: "a"}}, f, time.Now(), "test")
 	if f.pending.Load() {

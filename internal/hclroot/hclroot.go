@@ -3,12 +3,9 @@
 package hclroot
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/fs"
-	"os"
 	"path"
-	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -40,12 +37,6 @@ type Info struct {
 	Modules map[string]Location
 	// IgnoreChanges maps "type.name" to its ignore_changes paths; ["*"] means all.
 	IgnoreChanges map[string][]string
-	// DynamicBlocks maps "type.name" to the names of its direct `dynamic` blocks. The plan JSON
-	// configuration does not list them, so extract needs them to know a block is set.
-	DynamicBlocks map[string][]string
-	// ModuleSources holds the inspected sources of the Root's modules, keyed as in modules.json, so
-	// dynamic blocks of module resources are known. Nil when they could not be read.
-	ModuleSources map[string]Info
 	// Errors are parse problems; Info still holds whatever parsed.
 	Errors []string
 }
@@ -76,7 +67,6 @@ func Inspect(fsys fs.FS, dir string) (Info, error) {
 		Resources:     map[string]Location{},
 		Modules:       map[string]Location{},
 		IgnoreChanges: map[string][]string{},
-		DynamicBlocks: map[string][]string{},
 	}
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
@@ -132,9 +122,6 @@ func (info *Info) inspectFile(file string, src []byte) {
 			if paths := ignoreChanges(b.Body); paths != nil {
 				info.IgnoreChanges[addr] = paths
 			}
-			if names := dynamicBlocks(b.Body); names != nil {
-				info.DynamicBlocks[addr] = names
-			}
 		case "module":
 			info.Modules[b.Labels[0]] = loc
 		}
@@ -170,21 +157,6 @@ func ignoreChanges(body hcl.Body) []string {
 		return out
 	}
 	return nil
-}
-
-func dynamicBlocks(body hcl.Body) []string {
-	sb, ok := body.(*hclsyntax.Body)
-	if !ok {
-		return nil
-	}
-	var out []string
-	for _, b := range sb.Blocks {
-		if b.Type == "dynamic" && len(b.Labels) == 1 {
-			out = append(out, b.Labels[0])
-		}
-	}
-	sort.Strings(out)
-	return out
 }
 
 func traversalPath(t hcl.Traversal) string {
@@ -255,90 +227,4 @@ func ResourceKey(address string) string {
 		return address[:i]
 	}
 	return address
-}
-
-// DynamicBlockNames returns the direct dynamic block names of a resource address, in the root
-// module or, via ModuleSources, in a module. known is false when the module source was not read.
-func (info Info) DynamicBlockNames(address string) (names []string, known bool) {
-	if strings.HasPrefix(address, "data.") {
-		return nil, true
-	}
-	modKey, resAddr := SplitModuleAddress(address)
-	if modKey == "" {
-		return info.DynamicBlocks[ResourceKey(address)], true
-	}
-	m, ok := info.ModuleSources[modKey]
-	if !ok {
-		return nil, false
-	}
-	return m.DynamicBlocks[ResourceKey(resAddr)], true
-}
-
-// LoadModules reads rootDir/.terraform/modules/modules.json (written by init) and inspects each
-// module directory. It returns nil when the file is missing or unreadable; a module whose
-// directory cannot be read is left out.
-func LoadModules(rootDir string) map[string]Info {
-	b, err := os.ReadFile(filepath.Join(rootDir, ".terraform", "modules", "modules.json"))
-	if err != nil {
-		return nil
-	}
-	var mf struct{ Modules []struct{ Key, Dir string } }
-	if json.Unmarshal(b, &mf) != nil {
-		return nil
-	}
-	out := map[string]Info{}
-	for _, m := range mf.Modules {
-		if m.Key == "" || m.Key == "." {
-			continue
-		}
-		info, err := Inspect(os.DirFS(filepath.Join(rootDir, filepath.FromSlash(m.Dir))), ".")
-		if err != nil {
-			continue
-		}
-		out[m.Key] = info
-	}
-	return out
-}
-
-// SplitModuleAddress splits `module.a[0].module.b["k"].aws_x.y[1]` into the modules.json key "a.b"
-// and the module-relative resource address `aws_x.y[1]`.
-func SplitModuleAddress(address string) (moduleKey, resource string) {
-	segs := SplitAddress(address)
-	var keys []string
-	for len(segs) >= 4 && segs[0] == "module" {
-		keys = append(keys, StripKey(segs[1]))
-		segs = segs[2:]
-	}
-	return strings.Join(keys, "."), strings.Join(segs, ".")
-}
-
-// StripKey drops an instance key: `name[0]` becomes `name`.
-func StripKey(seg string) string {
-	if i := strings.IndexByte(seg, '['); i >= 0 {
-		return seg[:i]
-	}
-	return seg
-}
-
-// SplitAddress splits on dots outside brackets and quotes, so `a["x.y"]` stays one segment.
-func SplitAddress(a string) []string {
-	var segs []string
-	depth, quoted, start := 0, false, 0
-	for i := 0; i < len(a); i++ {
-		switch c := a[i]; {
-		case quoted && c == '\\':
-			i++
-		case c == '"':
-			quoted = !quoted
-		case quoted:
-		case c == '[':
-			depth++
-		case c == ']':
-			depth--
-		case c == '.' && depth == 0:
-			segs = append(segs, a[start:i])
-			start = i + 1
-		}
-	}
-	return append(segs, a[start:])
 }

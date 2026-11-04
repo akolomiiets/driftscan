@@ -3,8 +3,8 @@
 Detects Terraform/OpenTofu drift across every Root in a repository and alerts only on what changed
 since the last Scan.
 
-- **Drift vs Pending change.** Two plans per Root: `plan -refresh-only` finds what changed outside
-  Terraform, `plan -refresh=false` finds merged code that was never applied. A normal plan mixes the two.
+- **Drift vs Pending change.** Two plans per Root: a normal plan finds what changed outside
+  Terraform (`resource_drift`), `plan -refresh=false` finds merged code that was never applied.
 - **Quiet by design.** Each Finding is compared with the previous Report (the Baseline): Slack gets
   only new, changed and resolved Findings. A failed Scan never marks anything resolved.
 - **Read-only.** No state lock, no apply, no remediation. Only resource addresses and attribute
@@ -201,18 +201,13 @@ otlp:                      # with -otlp: driftscan.findings, driftscan.root.up, 
 
 ## Acknowledged drift
 
-`plan -refresh-only` reports attributes that Terraform will never revert. driftscan reports a Finding as
-*acknowledged* (severity info, listed in its own Markdown section with a reason) when every drifted attribute is
-either listed in the resource's `lifecycle.ignore_changes` (`ignore_changes`) or not set in the resource's
-configuration (`not_in_config`); `mixed` is both. The second case covers rules, policies or settings managed by
-separate resources (for example `aws_vpc_security_group_ingress_rule` for an `aws_security_group`) and
-computed-only attributes. If any drifted attribute is set in config, the Finding stays Drift.
-
-"Not set" is read from the plan's `configuration` section, so it works for local, registry and git modules.
-`dynamic` blocks are not listed there, so driftscan also reads the names of `dynamic` blocks from the Root's
-and its modules' HCL (modules found via `.terraform/modules/modules.json`). When that cannot prove it (no
-configuration entry for the resource, or a module whose sources cannot be read), the attribute counts as set. Known limitation: an attribute with a provider default that the
-config leaves unset would be reverted by `apply`, yet is acknowledged here. See ADR-0011.
+Some drift is not worth acting on because applying the code would not undo it: attributes in
+`lifecycle.ignore_changes`, rules managed by separate resources (for example `aws_vpc_security_group_ingress_rule`
+for an `aws_security_group`), computed-only attributes. driftscan asks Terraform: when the same plan has no change
+on a drifted resource, or an update touching none of the drifted attributes, the Finding is *acknowledged*
+(severity info, own Markdown section, reason `ignore_changes` or `not_reverted`). If apply would revert any drifted
+attribute, or replace the resource, it stays Drift. Exact for any provider (defaults, `default_tags`, `dynamic`
+blocks). See ADR-0011.
 
 ## Permissions
 

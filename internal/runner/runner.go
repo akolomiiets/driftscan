@@ -20,8 +20,8 @@ import (
 
 // Plans holds the two plan JSON documents for one Root. Pending is nil when not requested.
 type Plans struct {
-	RefreshOnly []byte
-	Pending     []byte
+	Drift   []byte
+	Pending []byte
 }
 
 // Runner produces Plans for a Root. A returned error becomes a Scan error Finding; its message
@@ -57,10 +57,10 @@ func (e Exec) Run(ctx context.Context, root discover.Root, withPending bool) (Pl
 	}
 	var p Plans
 	driftPlan := filepath.Join(tmp, "drift.tfplan")
-	if _, err := e.cmd(ctx, dir, env, "plan", "-refresh-only", "-lock=false", "-input=false", "-no-color", "-out="+driftPlan); err != nil {
-		return Plans{}, fmt.Errorf("plan -refresh-only: %w", err)
+	if _, err := e.cmd(ctx, dir, env, "plan", "-lock=false", "-input=false", "-no-color", "-out="+driftPlan); err != nil {
+		return Plans{}, fmt.Errorf("plan: %w", err)
 	}
-	if p.RefreshOnly, err = e.cmd(ctx, dir, env, "show", "-json", "-no-color", driftPlan); err != nil {
+	if p.Drift, err = e.cmd(ctx, dir, env, "show", "-json", "-no-color", driftPlan); err != nil {
 		return Plans{}, fmt.Errorf("show: %w", err)
 	}
 	if !withPending {

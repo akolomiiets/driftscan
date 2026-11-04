@@ -35,7 +35,7 @@ func info() hclroot.Info {
 }
 
 func TestDriftSkipsDataSourcesAndKeepsManaged(t *testing.T) {
-	got, err := Drift(load(t, "refresh_only.json"), "envs/dev", info())
+	got, err := Drift(load(t, "drift.json"), "envs/dev", info())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -54,7 +54,7 @@ func TestDriftSkipsDataSourcesAndKeepsManaged(t *testing.T) {
 }
 
 func TestDriftPathsAndAcknowledged(t *testing.T) {
-	got, _ := Drift(load(t, "refresh_only.json"), "r", info())
+	got, _ := Drift(load(t, "drift.json"), "r", info())
 	m := byAddr(got)
 
 	sg := m["aws_security_group.web"]
@@ -78,7 +78,7 @@ func TestDriftPathsAndAcknowledged(t *testing.T) {
 }
 
 func TestSensitiveValuesNeverLeak(t *testing.T) {
-	got, _ := Drift(load(t, "refresh_only.json"), "r", info())
+	got, _ := Drift(load(t, "drift.json"), "r", info())
 	db := byAddr(got)["aws_db_instance.main"]
 	if strings.Join(db.Paths, ",") != "password,settings" {
 		t.Errorf("db paths = %v, want password,settings", db.Paths)
@@ -134,15 +134,10 @@ func TestBadJSON(t *testing.T) {
 	}
 }
 
-func configInfo() hclroot.Info {
-	return hclroot.Info{
-		IgnoreChanges: map[string][]string{"aws_s3_bucket.logs": {"tags"}},
-		DynamicBlocks: map[string][]string{"aws_security_group.dyn": {"ingress"}},
-	}
-}
-
-func TestDriftNotInConfig(t *testing.T) {
-	got, err := Drift(load(t, "not_in_config.json"), "r", configInfo())
+func TestDriftReasons(t *testing.T) {
+	got, err := Drift(load(t, "not_reverted.json"), "r", hclroot.Info{
+		IgnoreChanges: map[string][]string{"aws_instance.ignored": {"tags"}},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,16 +149,14 @@ func TestDriftNotInConfig(t *testing.T) {
 		reason string
 		paths  string
 	}{
-		{"aws_security_group.noingress", true, finding.AckNotInConfig, "ingress[0].cidr_blocks"},
-		{"aws_security_group.withingress", false, "", "ingress[0].cidr_blocks"},
-		{"aws_security_group.dyn", false, "", "ingress[0].cidr_blocks"},
-		{"aws_s3_bucket.logs", true, finding.AckMixed, "policy,tags.Owner"},
-		{"aws_instance.partial", false, "", "ami,arn"},
-		{"aws_sqs_queue.ghost", false, "", "policy"},
-		{"module.vpc.aws_db_instance.this", true, finding.AckNotInConfig, "latest_restorable_time"},
-		{`module.vpc.module.flow_log[0].aws_iam_role.this["a.b"]`, true, finding.AckNotInConfig, "arn"},
-		{"module.vpc.aws_iam_role.inline", false, "", "inline_policy[0].policy"},
-		{"module.vpc.aws_iam_role.noinline", true, finding.AckNotInConfig, "arn"},
+		{"aws_security_group.rules", true, finding.AckNotReverted, "ingress[0].cidr_blocks"},
+		{"module.iam.aws_iam_role.svc[0]", true, finding.AckNotReverted, "inline_policy[0].policy"},
+		{"aws_lambda_function.fn", false, "", "environment[0]"},
+		{"aws_s3_bucket.tagged", false, "", "policy,tags_all.A"},
+		{"aws_db_instance.partial", false, "", "latest_restorable_time,port"},
+		{"aws_route_table.gone", false, "", ""},
+		{"aws_instance.ignored", true, finding.AckIgnoreChanges, "tags.A"},
+		{"aws_instance.noplan", true, finding.AckNotReverted, "arn"},
 	}
 	for _, tc := range tests {
 		f, ok := m[tc.addr]
@@ -177,43 +170,28 @@ func TestDriftNotInConfig(t *testing.T) {
 	}
 }
 
-func TestDriftIgnoreChangesReason(t *testing.T) {
-	got, _ := Drift(load(t, "refresh_only.json"), "r", info())
-	app := byAddr(got)["aws_instance.app[0]"]
-	if app.AckReason != finding.AckIgnoreChanges {
-		t.Errorf("reason = %q, want ignore_changes", app.AckReason)
-	}
-}
-
-func TestNotInConfigNeverLeaks(t *testing.T) {
-	got, _ := Drift(load(t, "not_in_config.json"), "r", configInfo())
+func TestNotRevertedNeverLeaks(t *testing.T) {
+	got, _ := Drift(load(t, "not_reverted.json"), "r", hclroot.Info{})
 	b, _ := json.Marshal(got)
 	if strings.Contains(string(b), "SECRET") || strings.Contains(string(b), "0.0.0.0/0") {
 		t.Errorf("output contains a value: %s", b)
 	}
 }
 
-func TestSplitAddress(t *testing.T) {
-	got := hclroot.SplitAddress(`module.a[0].module.b["x.y[z]"].aws_x.y[1]`)
-	want := `module|a[0]|module|b["x.y[z]"]|aws_x|y[1]`
-	if strings.Join(got, "|") != want {
-		t.Errorf("got %q", got)
+func TestOverlap(t *testing.T) {
+	tests := []struct {
+		drift, planned string
+		want           bool
+	}{
+		{"ingress[0].cidr_blocks", "ingress[0]", true},
+		{"ingress[0]", "ingress[0].cidr_blocks", true},
+		{"tags.A", "tags.A", true},
+		{"tags.A", "tags.B", false},
+		{"tags", "tags_all", false},
 	}
-}
-
-func TestTopName(t *testing.T) {
-	for in, want := range map[string]string{"ingress[0].cidr": "ingress", "tags.Owner": "tags", "policy": "policy", `["odd key"]`: "", "*": "", "": ""} {
-		if got := topName(in); got != want {
-			t.Errorf("topName(%q) = %q, want %q", in, got, want)
-		}
-	}
-}
-
-func TestNoConfigurationKeepsDrift(t *testing.T) {
-	got, _ := Drift(load(t, "refresh_only.json"), "r", hclroot.Info{})
-	for _, f := range got {
-		if f.Acknowledged {
-			t.Errorf("%s acknowledged without configuration section", f.Address)
+	for _, tc := range tests {
+		if got := covered(tc.drift, []string{tc.planned}) || covered(tc.planned, []string{tc.drift}); got != tc.want {
+			t.Errorf("overlap(%q, %q) = %v, want %v", tc.drift, tc.planned, got, tc.want)
 		}
 	}
 }
