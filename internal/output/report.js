@@ -27,8 +27,6 @@
     return n;
   }
 
-  function total(el) { return el.querySelectorAll("tr[data-kind]").length; }
-
   function apply() {
     var env = ctl.env.value, kind = ctl.kind.value, status = ctl.status.value;
     var sev = parseInt(ctl.sev.value, 10), q = ctl.q.value.trim().toLowerCase();
