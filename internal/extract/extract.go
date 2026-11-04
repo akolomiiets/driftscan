@@ -29,7 +29,7 @@ func Drift(planJSON []byte, root string, info hclroot.Info) ([]finding.Finding, 
 		if !ok {
 			continue
 		}
-		f.Acknowledged = acknowledged(f, info.IgnoredPaths(f.Address))
+		f.Acknowledged, f.AckReason = acknowledge(f, info.IgnoredPaths(f.Address), unsetInConfig(p.Config, rc, info))
 		out = append(out, f)
 	}
 	return out, nil
@@ -234,22 +234,35 @@ func equalJSON(a, b any) bool {
 	}
 }
 
-// acknowledged is true when every drifted path is covered by lifecycle.ignore_changes.
-func acknowledged(f finding.Finding, ignored []string) bool {
-	if len(ignored) == 0 || len(f.Paths) == 0 {
-		return false
+// acknowledge reports whether every drifted path is either covered by lifecycle.ignore_changes or
+// not set in the resource's configuration, and which of the two applied.
+func acknowledge(f finding.Finding, ignored []string, unset func(path string) bool) (bool, string) {
+	if len(f.Paths) == 0 {
+		return false, ""
 	}
 	for _, ig := range ignored {
 		if ig == "*" {
-			return true
+			return true, finding.AckIgnoreChanges
 		}
 	}
+	byIgnore, byConfig := false, false
 	for _, p := range f.Paths {
-		if !covered(p, ignored) {
-			return false
+		switch {
+		case covered(p, ignored):
+			byIgnore = true
+		case unset(p):
+			byConfig = true
+		default:
+			return false, ""
 		}
 	}
-	return true
+	switch {
+	case byIgnore && byConfig:
+		return true, finding.AckMixed
+	case byConfig:
+		return true, finding.AckNotInConfig
+	}
+	return true, finding.AckIgnoreChanges
 }
 
 func covered(p string, ignored []string) bool {
@@ -259,4 +272,123 @@ func covered(p string, ignored []string) bool {
 		}
 	}
 	return false
+}
+
+// unsetInConfig returns a test for "this drifted path is provably not set in the resource's
+// configuration" (ADR-0011). It answers false whenever that cannot be proven, so the Finding stays Drift.
+func unsetInConfig(cfg *tfjson.Config, rc *tfjson.ResourceChange, info hclroot.Info) func(string) bool {
+	never := func(string) bool { return false }
+	if cfg == nil || rc == nil || rc.Change == nil {
+		return never
+	}
+	res, inModule, ok := findConfigResource(cfg, rc.Address)
+	if !ok {
+		return never
+	}
+	dynamic := map[string]bool{}
+	for _, n := range info.DynamicBlockNames(rc.Address) {
+		dynamic[n] = true
+	}
+	return func(path string) bool {
+		name := topName(path)
+		if name == "" {
+			return false
+		}
+		if _, set := res.Expressions[name]; set || dynamic[name] {
+			return false
+		}
+		// `dynamic` blocks are absent from expressions, and a module's source is not read, so a
+		// block-shaped value in a module resource may be a dynamic block.
+		return !(inModule && blockShaped(child(rc.Change.Before, name), child(rc.Change.After, name)))
+	}
+}
+
+// topName is the top-level attribute or block name of a path, "" when it cannot be read.
+func topName(path string) string {
+	if path == "" || path[0] == '[' || path == "*" {
+		return ""
+	}
+	if i := strings.IndexAny(path, ".["); i >= 0 {
+		return path[:i]
+	}
+	return path
+}
+
+// blockShaped is true for a list or map holding objects, how nested blocks appear in a plan.
+func blockShaped(vals ...any) bool {
+	for _, v := range vals {
+		switch t := v.(type) {
+		case []any:
+			for _, e := range t {
+				if _, ok := e.(map[string]any); ok {
+					return true
+				}
+			}
+		case map[string]any:
+			for _, e := range t {
+				switch e.(type) {
+				case map[string]any, []any:
+					return true
+				}
+			}
+		}
+	}
+	return false
+}
+
+// findConfigResource follows a plan address such as `module.a[0].module.b["k"].aws_x.y[1]` through
+// the configuration's module_calls, ignoring instance keys. inModule is false for a root resource.
+func findConfigResource(cfg *tfjson.Config, address string) (res *tfjson.ConfigResource, inModule, ok bool) {
+	if cfg.RootModule == nil {
+		return nil, false, false
+	}
+	segs := splitAddress(address)
+	mod := cfg.RootModule
+	for len(segs) >= 4 && segs[0] == "module" {
+		call := mod.ModuleCalls[stripKey(segs[1])]
+		if call == nil || call.Module == nil {
+			return nil, false, false
+		}
+		mod, segs, inModule = call.Module, segs[2:], true
+	}
+	if len(segs) != 2 {
+		return nil, false, false
+	}
+	typ, name := stripKey(segs[0]), stripKey(segs[1])
+	for _, r := range mod.Resources {
+		if r.Mode == tfjson.ManagedResourceMode && r.Type == typ && r.Name == name {
+			return r, inModule, true
+		}
+	}
+	return nil, false, false
+}
+
+func stripKey(seg string) string {
+	if i := strings.IndexByte(seg, '['); i >= 0 {
+		return seg[:i]
+	}
+	return seg
+}
+
+// splitAddress splits on dots outside brackets and quotes, so `a["x.y"]` stays one segment.
+func splitAddress(a string) []string {
+	var segs []string
+	depth, quoted, start := 0, false, 0
+	for i := 0; i < len(a); i++ {
+		switch c := a[i]; {
+		case quoted && c == '\\':
+			i++
+		case c == '"':
+			quoted = !quoted
+		case quoted:
+		case c == '[':
+			depth++
+		case c == ']':
+			depth--
+		case c == '.' && depth == 0:
+			segs = append(segs, a[start:i])
+			start = i + 1
+		}
+	}
+	return append(segs, a[start:])
 }

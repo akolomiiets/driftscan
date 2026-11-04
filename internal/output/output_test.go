@@ -243,3 +243,16 @@ func TestAdviceIsHTMLEscaped(t *testing.T) {
 		t.Errorf("advice not escaped:\n%s", md)
 	}
 }
+
+func TestAcknowledgedShowsReason(t *testing.T) {
+	r := finding.Report{Compared: true, Findings: []finding.Finding{
+		{Root: "a", Address: "aws_security_group.x", Kind: finding.KindDrift, Paths: []string{"ingress[0].cidr_blocks"}, Status: finding.StatusNew, Acknowledged: true, AckReason: finding.AckNotInConfig},
+		{Root: "a", Address: "aws_s3_bucket.y", Kind: finding.KindDrift, Paths: []string{"tags.A", "policy"}, Status: finding.StatusNew, Acknowledged: true, AckReason: finding.AckMixed},
+	}}
+	md := Markdown(r)
+	for _, want := range []string{"### Acknowledged (2)", "| Reason |", "| not set in config |", "| ignore_changes + not set in config |"} {
+		if !strings.Contains(md, want) {
+			t.Errorf("markdown missing %q:\n%s", want, md)
+		}
+	}
+}

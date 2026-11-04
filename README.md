@@ -199,8 +199,19 @@ otlp:                      # with -otlp: driftscan.findings, driftscan.root.up, 
   headers_env: DRIFTSCAN_OTLP_HEADERS     # "Authorization=Basic ..."
 ```
 
-Drift only on attributes listed in a resource's `lifecycle.ignore_changes` is reported as
-*acknowledged* (severity info): `plan -refresh-only` shows it even though Terraform will not act on it.
+## Acknowledged drift
+
+`plan -refresh-only` reports attributes that Terraform will never revert. driftscan reports a Finding as
+*acknowledged* (severity info, listed in its own Markdown section with a reason) when every drifted attribute is
+either listed in the resource's `lifecycle.ignore_changes` (`ignore_changes`) or not set in the resource's
+configuration (`not_in_config`); `mixed` is both. The second case covers rules, policies or settings managed by
+separate resources (for example `aws_vpc_security_group_ingress_rule` for an `aws_security_group`) and
+computed-only attributes. If any drifted attribute is set in config, the Finding stays Drift.
+
+"Not set" is read from the plan's `configuration` section, so it works for local, registry and git modules. When
+that cannot prove it (no configuration entry for the resource, or a block in a module resource that may come from
+a `dynamic` block), the attribute counts as set. Known limitation: an attribute with a provider default that the
+config leaves unset would be reverted by `apply`, yet is acknowledged here. See ADR-0011.
 
 ## Permissions
 

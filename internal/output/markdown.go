@@ -65,7 +65,7 @@ func Markdown(r finding.Report) string {
 			return f.Kind == finding.KindDrift && f.Active() && !f.Acknowledged
 		}},
 		{"Pending changes", func(f finding.Finding) bool { return f.Kind == finding.KindPending && f.Active() }},
-		{"Acknowledged (lifecycle.ignore_changes)", func(f finding.Finding) bool { return f.Acknowledged && f.Active() }},
+		{"Acknowledged", func(f finding.Finding) bool { return f.Acknowledged && f.Active() }},
 		{"Resolved since last Scan", func(f finding.Finding) bool { return f.Status == finding.StatusResolved }},
 	}
 	for _, s := range sections {
@@ -81,6 +81,10 @@ func Markdown(r finding.Report) string {
 		sort.SliceStable(rows, func(i, j int) bool { return rows[i].Severity > rows[j].Severity })
 		fmt.Fprintf(&b, "### %s (%d)\n\n", s.title, len(rows))
 		head, sep := "| Severity | Status | Root | Resource | Attributes |", "|---|---|---|---|---|"
+		ack := s.title == "Acknowledged"
+		if ack {
+			head, sep = head+" Reason |", sep+"---|"
+		}
 		if owners {
 			head, sep = head+" Owner |", sep+"---|"
 		}
@@ -97,6 +101,9 @@ func Markdown(r finding.Report) string {
 				detail = cell(strings.Join(f.Actions, ", "))
 			}
 			fmt.Fprintf(&b, "| %s | %s | %s | %s | %s |", f.Severity, statusText(f), code(f.Root), what, detail)
+			if ack {
+				fmt.Fprintf(&b, " %s |", cell(orDash(ackText(f.AckReason))))
+			}
 			if owners {
 				fmt.Fprintf(&b, " %s |", cell(orDash(f.Owner)))
 			}
@@ -134,6 +141,18 @@ func writeAdvice(b *strings.Builder, rows []finding.Finding) {
 		}
 	}
 	b.WriteString("\n</details>\n\n")
+}
+
+func ackText(reason string) string {
+	switch reason {
+	case finding.AckIgnoreChanges:
+		return "lifecycle.ignore_changes"
+	case finding.AckNotInConfig:
+		return "not set in config"
+	case finding.AckMixed:
+		return "ignore_changes + not set in config"
+	}
+	return ""
 }
 
 func statusText(f finding.Finding) string {

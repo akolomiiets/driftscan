@@ -37,6 +37,9 @@ type Info struct {
 	Modules map[string]Location
 	// IgnoreChanges maps "type.name" to its ignore_changes paths; ["*"] means all.
 	IgnoreChanges map[string][]string
+	// DynamicBlocks maps "type.name" to the names of its direct `dynamic` blocks. The plan JSON
+	// configuration does not list them, so extract needs them to know a block is set.
+	DynamicBlocks map[string][]string
 	// Errors are parse problems; Info still holds whatever parsed.
 	Errors []string
 }
@@ -67,6 +70,7 @@ func Inspect(fsys fs.FS, dir string) (Info, error) {
 		Resources:     map[string]Location{},
 		Modules:       map[string]Location{},
 		IgnoreChanges: map[string][]string{},
+		DynamicBlocks: map[string][]string{},
 	}
 	entries, err := fs.ReadDir(fsys, dir)
 	if err != nil {
@@ -122,6 +126,9 @@ func (info *Info) inspectFile(file string, src []byte) {
 			if paths := ignoreChanges(b.Body); paths != nil {
 				info.IgnoreChanges[addr] = paths
 			}
+			if names := dynamicBlocks(b.Body); names != nil {
+				info.DynamicBlocks[addr] = names
+			}
 		case "module":
 			info.Modules[b.Labels[0]] = loc
 		}
@@ -157,6 +164,21 @@ func ignoreChanges(body hcl.Body) []string {
 		return out
 	}
 	return nil
+}
+
+func dynamicBlocks(body hcl.Body) []string {
+	sb, ok := body.(*hclsyntax.Body)
+	if !ok {
+		return nil
+	}
+	var out []string
+	for _, b := range sb.Blocks {
+		if b.Type == "dynamic" && len(b.Labels) == 1 {
+			out = append(out, b.Labels[0])
+		}
+	}
+	sort.Strings(out)
+	return out
 }
 
 func traversalPath(t hcl.Traversal) string {
@@ -227,4 +249,12 @@ func ResourceKey(address string) string {
 		return address[:i]
 	}
 	return address
+}
+
+// DynamicBlockNames returns the direct dynamic block names of a root-module resource address.
+func (info Info) DynamicBlockNames(address string) []string {
+	if strings.HasPrefix(address, "module.") || strings.HasPrefix(address, "data.") {
+		return nil
+	}
+	return info.DynamicBlocks[ResourceKey(address)]
 }

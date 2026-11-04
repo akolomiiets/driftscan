@@ -48,7 +48,7 @@ A match that drops a Finding before it is reported, for known noise.
 _Avoid_: suppression, exclusion
 
 **Acknowledged**:
-Drift only on attributes the code already tells Terraform to ignore (`lifecycle.ignore_changes`). Reported at info Severity, never as Drift that needs action.
+Drift only on attributes Terraform will not revert: ones the code tells it to ignore (`lifecycle.ignore_changes`) or ones the resource's configuration never sets (managed by another resource, or computed-only). Reported at info Severity, never as Drift that needs action. The reason is `ignore_changes`, `not_in_config` or `mixed`.
 
 ### Context on a Finding
 

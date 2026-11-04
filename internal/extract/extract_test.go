@@ -133,3 +133,87 @@ func TestBadJSON(t *testing.T) {
 		t.Error("want error")
 	}
 }
+
+func configInfo() hclroot.Info {
+	return hclroot.Info{
+		IgnoreChanges: map[string][]string{"aws_s3_bucket.logs": {"tags"}},
+		DynamicBlocks: map[string][]string{"aws_security_group.dyn": {"ingress"}},
+	}
+}
+
+func TestDriftNotInConfig(t *testing.T) {
+	got, err := Drift(load(t, "not_in_config.json"), "r", configInfo())
+	if err != nil {
+		t.Fatal(err)
+	}
+	m := byAddr(got)
+
+	tests := []struct {
+		addr   string
+		acked  bool
+		reason string
+		paths  string
+	}{
+		{"aws_security_group.noingress", true, finding.AckNotInConfig, "ingress[0].cidr_blocks"},
+		{"aws_security_group.withingress", false, "", "ingress[0].cidr_blocks"},
+		{"aws_security_group.dyn", false, "", "ingress[0].cidr_blocks"},
+		{"aws_s3_bucket.logs", true, finding.AckMixed, "policy,tags.Owner"},
+		{"aws_instance.partial", false, "", "ami,arn"},
+		{"aws_sqs_queue.ghost", false, "", "policy"},
+		{"module.vpc.aws_db_instance.this", true, finding.AckNotInConfig, "latest_restorable_time"},
+		{`module.vpc.module.flow_log[0].aws_iam_role.this["a.b"]`, true, finding.AckNotInConfig, "arn"},
+		{"module.vpc.aws_iam_role.inline", false, "", "inline_policy[0].policy"},
+		{"module.vpc.aws_iam_role.noinline", true, finding.AckNotInConfig, "arn"},
+	}
+	for _, tc := range tests {
+		f, ok := m[tc.addr]
+		if !ok {
+			t.Errorf("%s: no finding", tc.addr)
+			continue
+		}
+		if f.Acknowledged != tc.acked || f.AckReason != tc.reason || strings.Join(f.Paths, ",") != tc.paths {
+			t.Errorf("%s = acked %v reason %q paths %v, want %v %q %s", tc.addr, f.Acknowledged, f.AckReason, f.Paths, tc.acked, tc.reason, tc.paths)
+		}
+	}
+}
+
+func TestDriftIgnoreChangesReason(t *testing.T) {
+	got, _ := Drift(load(t, "refresh_only.json"), "r", info())
+	app := byAddr(got)["aws_instance.app[0]"]
+	if app.AckReason != finding.AckIgnoreChanges {
+		t.Errorf("reason = %q, want ignore_changes", app.AckReason)
+	}
+}
+
+func TestNotInConfigNeverLeaks(t *testing.T) {
+	got, _ := Drift(load(t, "not_in_config.json"), "r", configInfo())
+	b, _ := json.Marshal(got)
+	if strings.Contains(string(b), "SECRET") || strings.Contains(string(b), "0.0.0.0/0") {
+		t.Errorf("output contains a value: %s", b)
+	}
+}
+
+func TestSplitAddress(t *testing.T) {
+	got := splitAddress(`module.a[0].module.b["x.y[z]"].aws_x.y[1]`)
+	want := `module|a[0]|module|b["x.y[z]"]|aws_x|y[1]`
+	if strings.Join(got, "|") != want {
+		t.Errorf("got %q", got)
+	}
+}
+
+func TestTopName(t *testing.T) {
+	for in, want := range map[string]string{"ingress[0].cidr": "ingress", "tags.Owner": "tags", "policy": "policy", `["odd key"]`: "", "*": "", "": ""} {
+		if got := topName(in); got != want {
+			t.Errorf("topName(%q) = %q, want %q", in, got, want)
+		}
+	}
+}
+
+func TestNoConfigurationKeepsDrift(t *testing.T) {
+	got, _ := Drift(load(t, "refresh_only.json"), "r", hclroot.Info{})
+	for _, f := range got {
+		if f.Acknowledged {
+			t.Errorf("%s acknowledged without configuration section", f.Address)
+		}
+	}
+}
