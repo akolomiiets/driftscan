@@ -187,10 +187,10 @@
    }
   },
   {
-   "address": "aws_instance.noplan",
+   "address": "aws_instance.replaced",
    "mode": "managed",
    "type": "aws_instance",
-   "name": "noplan",
+   "name": "replaced",
    "change": {
     "actions": [
      "update"
@@ -200,6 +200,147 @@
     },
     "after": {
      "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.replaced",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "replaced",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-z"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "deposed": "deadbeef"
+  },
+  {
+   "address": "aws_instance.forgotten",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "forgotten",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.ignorereplace",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "ignorereplace",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "tags": {
+      "A": "1"
+     }
+    },
+    "after": {
+     "tags": {
+      "A": "SECRET-2"
+     }
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_security_group.setpending",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "setpending",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "c1",
+       "port": 1
+      }
+     ]
+    },
+    "after": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c2",
+       "port": 1
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_security_group.setother",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "setother",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "c1",
+       "port": 1
+      }
+     ]
+    },
+    "after": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c2",
+       "port": 1
+      }
+     ]
     },
     "after_unknown": {},
     "before_sensitive": {},
@@ -388,6 +529,164 @@
      "tags": {
       "A": "SECRET-2"
      }
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.replaced",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "replaced",
+   "change": {
+    "actions": [
+     "no-op"
+    ],
+    "before": {
+     "arn": "SECRET-y"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.replaced",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "replaced",
+   "change": {
+    "actions": [
+     "delete"
+    ],
+    "before": {
+     "arn": "SECRET-z"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "deposed": "deadbeef"
+  },
+  {
+   "address": "aws_instance.forgotten",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "forgotten",
+   "change": {
+    "actions": [
+     "forget"
+    ],
+    "before": {
+     "arn": "SECRET-y"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.ignorereplace",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "ignorereplace",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "tags": {
+      "A": "SECRET-2"
+     }
+    },
+    "after": {
+     "tags": {
+      "A": "1"
+     }
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_security_group.setpending",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "setpending",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c2",
+       "port": 1
+      }
+     ]
+    },
+    "after": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c3",
+       "port": 2
+      }
+     ]
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_security_group.setother",
+   "mode": "managed",
+   "type": "aws_security_group",
+   "name": "setother",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "rule": [
+      {
+       "cidr": "a",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c2",
+       "port": 1
+      }
+     ]
+    },
+    "after": {
+     "rule": [
+      {
+       "cidr": "b",
+       "port": 1
+      },
+      {
+       "cidr": "SECRET-c2",
+       "port": 1
+      }
+     ]
     },
     "after_unknown": {},
     "before_sensitive": {},

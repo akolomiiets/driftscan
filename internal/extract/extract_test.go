@@ -136,7 +136,7 @@ func TestBadJSON(t *testing.T) {
 
 func TestDriftReasons(t *testing.T) {
 	got, err := Drift(load(t, "not_reverted.json"), "r", hclroot.Info{
-		IgnoreChanges: map[string][]string{"aws_instance.ignored": {"tags"}},
+		IgnoreChanges: map[string][]string{"aws_instance.ignored": {"tags"}, "aws_instance.ignorereplace": {"tags"}},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -156,7 +156,11 @@ func TestDriftReasons(t *testing.T) {
 		{"aws_db_instance.partial", false, "", "latest_restorable_time,port"},
 		{"aws_route_table.gone", false, "", ""},
 		{"aws_instance.ignored", true, finding.AckIgnoreChanges, "tags.A"},
-		{"aws_instance.noplan", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.replaced", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.forgotten", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.ignorereplace", false, "", "tags.A"},
+		{"aws_security_group.setpending", false, "", "rule[1].cidr"},
+		{"aws_security_group.setother", true, finding.AckNotReverted, "rule[1].cidr"},
 	}
 	for _, tc := range tests {
 		f, ok := m[tc.addr]
@@ -193,5 +197,27 @@ func TestOverlap(t *testing.T) {
 		if got := covered(tc.drift, []string{tc.planned}) || covered(tc.planned, []string{tc.drift}); got != tc.want {
 			t.Errorf("overlap(%q, %q) = %v, want %v", tc.drift, tc.planned, got, tc.want)
 		}
+	}
+}
+
+func TestDeposedDriftIsSkipped(t *testing.T) {
+	got, _ := Drift(load(t, "not_reverted.json"), "r", hclroot.Info{})
+	n := 0
+	for _, f := range got {
+		if f.Address == "aws_instance.replaced" {
+			n++
+		}
+	}
+	if n != 1 {
+		t.Errorf("got %d findings for the live+deposed address, want 1", n)
+	}
+}
+
+func TestMissingPlannedChangeIsActionable(t *testing.T) {
+	plan := `{"format_version":"1.2","resource_drift":[{"address":"aws_instance.x","mode":"managed","type":"aws_instance","name":"x",
+	"change":{"actions":["update"],"before":{"arn":"a"},"after":{"arn":"b"}}}]}`
+	got, err := Drift([]byte(plan), "r", hclroot.Info{})
+	if err != nil || len(got) != 1 || got[0].Acknowledged {
+		t.Errorf("got %+v, %v; want one actionable Finding", got, err)
 	}
 }

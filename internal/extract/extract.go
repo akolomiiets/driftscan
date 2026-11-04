@@ -24,19 +24,24 @@ func Drift(planJSON []byte, root string, info hclroot.Info) ([]finding.Finding, 
 	if err != nil {
 		return nil, err
 	}
+	// Keyed by address and deposed key: a replaced resource has a live and a deposed object.
 	planned := map[string]*tfjson.ResourceChange{}
 	for _, rc := range p.ResourceChanges {
 		if rc != nil {
-			planned[rc.Address] = rc
+			planned[rc.Address+"\x00"+rc.DeposedKey] = rc
 		}
 	}
 	var out []finding.Finding
 	for _, rc := range p.ResourceDrift {
+		// A deposed object is a leftover of a replace, not the live resource; skip it.
+		if rc != nil && rc.DeposedKey != "" {
+			continue
+		}
 		f, ok := fromChange(rc, root, finding.KindDrift)
 		if !ok {
 			continue
 		}
-		f.Acknowledged, f.AckReason = acknowledge(f, info.IgnoredPaths(f.Address), planned[f.Address])
+		f.Acknowledged, f.AckReason = acknowledge(f, info.IgnoredPaths(f.Address), planned[f.Address+"\x00"])
 		out = append(out, f)
 	}
 	return out, nil
@@ -241,31 +246,41 @@ func equalJSON(a, b any) bool {
 	}
 }
 
-// acknowledge decides whether applying the code would leave the drift alone. Every drifted path in
-// lifecycle.ignore_changes gives "ignore_changes"; otherwise the drift is "not_reverted" when the
-// plan has no change on the resource, or an update touching none of the drifted paths.
+// acknowledge decides whether applying the code would leave the drift alone. The plan must have an
+// entry for the resource (else it is actionable, fail closed). No change, or forget, leaves the drift:
+// "ignore_changes" when lifecycle.ignore_changes covers every drifted path, else "not_reverted". An
+// update leaves it when ignore_changes covers it or the update touches none of the drifted paths.
+// Create, delete and replace are always actionable.
 func acknowledge(f finding.Finding, ignored []string, planned *tfjson.ResourceChange) (bool, string) {
-	if allIgnored(f, ignored) {
-		return true, finding.AckIgnoreChanges
-	}
 	if planned == nil || planned.Change == nil {
-		return true, finding.AckNotReverted
-	}
-	a := planned.Change.Actions
-	if len(a) == 0 || a.NoOp() || a.Read() {
-		return true, finding.AckNotReverted
-	}
-	if !a.Update() || len(f.Paths) == 0 {
 		return false, ""
 	}
+	reason := finding.AckNotReverted
+	if allIgnored(f, ignored) {
+		reason = finding.AckIgnoreChanges
+	}
+	a := planned.Change.Actions
+	if len(a) == 0 || a.NoOp() || a.Read() || (len(a) == 1 && a[0] == tfjson.ActionForget) {
+		return true, reason
+	}
+	if !a.Update() {
+		return false, ""
+	}
+	if reason == finding.AckIgnoreChanges {
+		return true, reason
+	}
+	if len(f.Paths) == 0 {
+		return false, ""
+	}
+	plannedPaths := changedPaths(planned.Change)
 	for _, dp := range f.Paths {
-		for _, pp := range changedPaths(planned.Change) {
+		for _, pp := range plannedPaths {
 			if covered(dp, []string{pp}) || covered(pp, []string{dp}) {
 				return false, ""
 			}
 		}
 	}
-	return true, finding.AckNotReverted
+	return true, reason
 }
 
 // allIgnored is true when every drifted path is covered by lifecycle.ignore_changes.

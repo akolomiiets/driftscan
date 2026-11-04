@@ -53,7 +53,8 @@ func Compare(baseline *finding.Report, cur finding.Report, now time.Time) findin
 			f.FirstSeen = now.UTC()
 		default:
 			f.Status = finding.StatusPersisting
-			if !slices.Equal(f.Paths, p.Paths) || !slices.Equal(f.Actions, p.Actions) {
+			if !slices.Equal(f.Paths, p.Paths) || !slices.Equal(f.Actions, p.Actions) ||
+				f.Acknowledged != p.Acknowledged || f.AckReason != p.AckReason {
 				f.Status = finding.StatusChanged
 			}
 			f.SeenCount = p.SeenCount + 1

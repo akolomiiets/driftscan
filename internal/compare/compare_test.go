@@ -170,3 +170,20 @@ func TestBrokenRootAndDigest(t *testing.T) {
 		t.Errorf("digest at threshold: %v", a)
 	}
 }
+
+func TestAcknowledgementChangeIsChanged(t *testing.T) {
+	ok := map[string]finding.RootOutcome{"r": finding.RootDrifted}
+	real := d("r", "a.x", finding.SeverityHigh, "p")
+	acked := real
+	acked.Acknowledged, acked.AckReason, acked.Severity = true, finding.AckNotReverted, finding.SeverityInfo
+	key := "r|a.x|drift"
+
+	got := Compare(&finding.Report{Version: finding.ReportVersion, Findings: []finding.Finding{acked}}, rep(ok, real), day2)
+	if status(got)[key] != finding.StatusChanged {
+		t.Errorf("ack -> real = %v, want changed", status(got)[key])
+	}
+	got = Compare(&finding.Report{Version: finding.ReportVersion, Findings: []finding.Finding{real}}, rep(ok, acked), day2)
+	if status(got)[key] != finding.StatusChanged {
+		t.Errorf("real -> ack = %v, want changed", status(got)[key])
+	}
+}

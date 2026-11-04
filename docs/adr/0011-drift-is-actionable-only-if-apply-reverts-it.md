@@ -4,7 +4,11 @@ A refresh-only plan reports every attribute that differs from state, including o
 
 ## Consequences
 
-- Exact for any provider and any infra: defaults, `default_tags`, attributes managed elsewhere and computed-only attributes all follow from what Terraform itself would do. No configuration or module sources are read.
+- Follows Terraform's own plan for any provider and any infra: defaults, `default_tags`, attributes managed elsewhere and computed-only attributes all follow from what Terraform itself would do. No configuration or module sources are read.
+- A resource missing from `resource_changes` is treated as actionable (fail closed). `no-op`, `read` and `forget` leave the drift; create, delete and replace never do, even with `ignore_changes`. A deposed object (left by a replace) is skipped; planned changes are keyed by address and deposed key.
+- Set-typed blocks: the planned change's `before` is the refreshed state, the same object the drift plan reports, so revert paths carry the same set indices as drift paths and the overlap test is sound. The depth cap (3) only truncates both sides to a shorter prefix, which can widen an overlap, never hide one.
+- A normal plan runs provider plan-time validation, preconditions and unknown `count`/`for_each`, so a Root a refresh-only plan could scan may now be a Scan error. The Pending plan runs only after this first plan succeeds.
+- A Finding whose acknowledgement or reason differs from the Baseline is `changed`, so an acknowledged Finding turning into real Drift alerts.
 - A normal plan can surface drift on a resource that a pending code change also touches; if the plan's update overlaps the drifted paths, it counts as actionable.
 - A console-added rule on a resource whose rules are managed elsewhere is acknowledged as `not_reverted`, since apply would leave it.
 - The plan needs the same read-only permissions as before (ADR-0002) and no lock; the plan file is deleted after `show -json`.

@@ -206,8 +206,10 @@ Some drift is not worth acting on because applying the code would not undo it: a
 for an `aws_security_group`), computed-only attributes. driftscan asks Terraform: when the same plan has no change
 on a drifted resource, or an update touching none of the drifted attributes, the Finding is *acknowledged*
 (severity info, own Markdown section, reason `ignore_changes` or `not_reverted`). If apply would revert any drifted
-attribute, or replace the resource, it stays Drift. Exact for any provider (defaults, `default_tags`, `dynamic`
-blocks). See ADR-0011.
+attribute, or replace the resource, it stays Drift. This follows Terraform's own plan (defaults, `default_tags`, `dynamic` blocks), with no special cases per provider; the
+path depth cap only widens overlap, never hides it. Because the drift plan is a normal plan, plan-time validation,
+preconditions and unknown `count`/`for_each` can make a Root a Scan error that a refresh-only plan would have scanned;
+the Pending plan runs only after it succeeds. See ADR-0011.
 
 ## Permissions
 
