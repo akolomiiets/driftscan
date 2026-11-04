@@ -1,0 +1,10 @@
+.bin/
+.tfcache/
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+report.html
+summary.md
+baseline.json
+pending_override.tf

@@ -13,6 +13,8 @@ since the last Scan.
 
 Status: pre-release. `advise` and `unmanaged` are experimental. Design: [GLOSSARY.md](GLOSSARY.md), [docs/adr](docs/adr).
 
+Try it locally without a cloud account: [examples/moto](examples/moto) runs real Terraform against a local AWS emulator and shows many drift shapes.
+
 ## Quick start
 
 ```sh

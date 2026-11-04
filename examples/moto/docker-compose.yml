@@ -1,0 +1,10 @@
+services:
+  moto:
+    image: motoserver/moto:5.2.5
+    ports:
+      - "127.0.0.1:5555:5000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:5000/moto-api/')"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
