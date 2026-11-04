@@ -23,6 +23,9 @@ func Compare(baseline *finding.Report, cur finding.Report, now time.Time) findin
 	if baseline != nil {
 		for _, f := range baseline.Findings {
 			if f.Active() {
+				if f.Acknowledged && f.AckReason == "" {
+					f.AckReason = finding.AckIgnoreChanges // v0.1 Baselines had only this reason
+				}
 				prev[f.Key()] = f
 			}
 		}

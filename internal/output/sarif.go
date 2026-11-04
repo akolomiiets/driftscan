@@ -136,7 +136,7 @@ func sarifMessage(f finding.Finding) string {
 	}
 	ack := ""
 	if f.Acknowledged {
-		ack = " (covered by lifecycle.ignore_changes)"
+		ack = " (" + ackText(f.AckReason) + ")"
 	}
 	return fmt.Sprintf("%s in %s drifted: %s%s", f.Address, f.Root, what, ack)
 }

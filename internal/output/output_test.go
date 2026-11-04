@@ -250,9 +250,24 @@ func TestAcknowledgedShowsReason(t *testing.T) {
 		{Root: "a", Address: "aws_s3_bucket.y", Kind: finding.KindDrift, Paths: []string{"tags.A"}, Status: finding.StatusNew, Acknowledged: true},
 	}}
 	md := Markdown(r)
-	for _, want := range []string{"### Acknowledged (2)", "| Reason |", "| not reverted by apply |", "| lifecycle.ignore_changes |"} {
+	for _, want := range []string{"### Acknowledged (2)", "| Reason |", "| not reverted by apply |", "| covered by lifecycle.ignore_changes |"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("markdown missing %q:\n%s", want, md)
+		}
+	}
+}
+
+func TestSARIFAckMessageFollowsReason(t *testing.T) {
+	base := finding.Finding{Root: "a", Address: "x.y", Kind: finding.KindDrift, Paths: []string{"p"}, Acknowledged: true}
+	for reason, want := range map[string]string{
+		"":                       "(covered by lifecycle.ignore_changes)",
+		finding.AckIgnoreChanges: "(covered by lifecycle.ignore_changes)",
+		finding.AckNotReverted:   "(not reverted by apply)",
+	} {
+		f := base
+		f.AckReason = reason
+		if got := sarifMessage(f); !strings.HasSuffix(got, want) {
+			t.Errorf("reason %q: %q, want suffix %q", reason, got, want)
 		}
 	}
 }

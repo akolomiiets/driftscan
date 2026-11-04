@@ -147,7 +147,7 @@ func ackText(reason string) string {
 	if reason == finding.AckNotReverted {
 		return "not reverted by apply"
 	}
-	return "lifecycle.ignore_changes"
+	return "covered by lifecycle.ignore_changes"
 }
 
 func statusText(f finding.Finding) string {

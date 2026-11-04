@@ -187,3 +187,27 @@ func TestAcknowledgementChangeIsChanged(t *testing.T) {
 		t.Errorf("real -> ack = %v, want changed", status(got)[key])
 	}
 }
+
+func TestAckReasonOnlyFlipIsChanged(t *testing.T) {
+	ok := map[string]finding.RootOutcome{"r": finding.RootDrifted}
+	a := d("r", "a.x", finding.SeverityInfo, "p")
+	a.Acknowledged, a.AckReason = true, finding.AckIgnoreChanges
+	b := a
+	b.AckReason = finding.AckNotReverted
+	got := Compare(&finding.Report{Version: finding.ReportVersion, Findings: []finding.Finding{a}}, rep(ok, b), day2)
+	if status(got)["r|a.x|drift"] != finding.StatusChanged {
+		t.Errorf("reason flip = %v, want changed", status(got)["r|a.x|drift"])
+	}
+}
+
+func TestLegacyAcknowledgedBaselineIsUnchanged(t *testing.T) {
+	ok := map[string]finding.RootOutcome{"r": finding.RootDrifted}
+	old := d("r", "a.x", finding.SeverityInfo, "p")
+	old.Acknowledged = true
+	cur := old
+	cur.AckReason = finding.AckIgnoreChanges
+	got := Compare(&finding.Report{Version: finding.ReportVersion, Findings: []finding.Finding{old}}, rep(ok, cur), day2)
+	if status(got)["r|a.x|drift"] != finding.StatusPersisting {
+		t.Errorf("v0.1 baseline = %v, want persisting", status(got)["r|a.x|drift"])
+	}
+}
