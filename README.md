@@ -58,9 +58,9 @@ jobs:
         run: |
           run_id=$(gh api "repos/$GITHUB_REPOSITORY/actions/artifacts?name=driftscan-baseline&per_page=1" -q '.artifacts[0].workflow_run.id')
           if [ -n "$run_id" ]; then gh run download "$run_id" -n driftscan-baseline; fi
-      - uses: akolomiiets/driftscan@v0.1.1
+      - uses: akolomiiets/driftscan@v0.2.0
         with:
-          version: v0.1.1
+          version: v0.2.0
           args: scan -baseline driftscan-report.json -out driftscan-report.json -sarif drift.sarif -slack
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.DRIFT_SLACK_WEBHOOK }}
