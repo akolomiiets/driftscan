@@ -1,0 +1,58 @@
+name: driftscan
+description: Detect Terraform/OpenTofu drift and alert only on what changed since the last scan.
+branding:
+  icon: git-pull-request
+  color: orange
+
+inputs:
+  version:
+    description: driftscan release tag to install, e.g. v0.1.0. Pin it; there is no "latest".
+    required: true
+  args:
+    description: Arguments passed to driftscan, split on whitespace (no quoting), e.g. "scan -baseline baseline.json -slack".
+    default: scan
+  working-directory:
+    description: Directory driftscan runs in.
+    default: .
+  verify-attestation:
+    description: Verify the binary's build provenance with gh attestation verify.
+    default: "true"
+
+runs:
+  using: composite
+  steps:
+    - name: Install driftscan
+      shell: bash
+      env:
+        VERSION: ${{ inputs.version }}
+        VERIFY: ${{ inputs.verify-attestation }}
+        GH_TOKEN: ${{ github.token }}
+        ACTION_REPO: ${{ github.action_repository }}
+      run: |
+        set -euo pipefail
+        repo="${ACTION_REPO:-akolomiiets/driftscan}"
+        case "${RUNNER_OS}-${RUNNER_ARCH}" in
+          Linux-X64) asset=driftscan_linux_amd64 ;;
+          Linux-ARM64) asset=driftscan_linux_arm64 ;;
+          macOS-X64) asset=driftscan_darwin_amd64 ;;
+          macOS-ARM64) asset=driftscan_darwin_arm64 ;;
+          *) echo "unsupported runner ${RUNNER_OS}-${RUNNER_ARCH}"; exit 1 ;;
+        esac
+        dir="${RUNNER_TEMP}/driftscan"
+        mkdir -p "$dir"
+        gh release download "$VERSION" --repo "$repo" --dir "$dir" --pattern "$asset" --pattern checksums.txt --clobber
+        (cd "$dir" && grep " ${asset}\$" checksums.txt | shasum -a 256 -c -)
+        if [ "$VERIFY" = "true" ]; then
+          gh attestation verify "$dir/$asset" --repo "$repo"
+        fi
+        install -m 0755 "$dir/$asset" "$dir/driftscan"
+        echo "$dir" >> "$GITHUB_PATH"
+    - name: Run driftscan
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        ARGS: ${{ inputs.args }}
+      run: |
+        set -euo pipefail
+        read -r -a argv <<< "$ARGS"
+        driftscan "${argv[@]}"

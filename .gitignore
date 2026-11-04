@@ -1,0 +1,6 @@
+/driftscan
+/dist/
+driftscan-report.json
+*.sarif
+.terraform/
+*.tfstate*

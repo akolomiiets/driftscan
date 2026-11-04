@@ -1,0 +1,26 @@
+{
+  "format_version": "1.2",
+  "terraform_version": "1.16.3",
+  "resource_changes": [
+    {
+      "address": "aws_s3_bucket.logs",
+      "mode": "managed", "type": "aws_s3_bucket", "name": "logs",
+      "change": {"actions": ["create"], "before": null, "after": {"bucket": "logs"}, "after_unknown": {"id": true}}
+    },
+    {
+      "address": "aws_iam_role.ci",
+      "mode": "managed", "type": "aws_iam_role", "name": "ci",
+      "change": {"actions": ["update"], "before": {"max_session_duration": 3600, "arn": "a"}, "after": {"max_session_duration": 7200}, "after_unknown": {"arn": true}}
+    },
+    {
+      "address": "aws_vpc.main",
+      "mode": "managed", "type": "aws_vpc", "name": "main",
+      "change": {"actions": ["no-op"], "before": {"id": "vpc-1"}, "after": {"id": "vpc-1"}}
+    },
+    {
+      "address": "data.aws_ami.al",
+      "mode": "data", "type": "aws_ami", "name": "al",
+      "change": {"actions": ["read"], "before": null, "after": {}}
+    }
+  ]
+}
