@@ -281,12 +281,13 @@ func unsetInConfig(cfg *tfjson.Config, rc *tfjson.ResourceChange, info hclroot.I
 	if cfg == nil || rc == nil || rc.Change == nil {
 		return never
 	}
-	res, inModule, ok := findConfigResource(cfg, rc.Address)
+	res, ok := findConfigResource(cfg, rc.Address)
 	if !ok {
 		return never
 	}
+	names, known := info.DynamicBlockNames(rc.Address)
 	dynamic := map[string]bool{}
-	for _, n := range info.DynamicBlockNames(rc.Address) {
+	for _, n := range names {
 		dynamic[n] = true
 	}
 	return func(path string) bool {
@@ -297,9 +298,9 @@ func unsetInConfig(cfg *tfjson.Config, rc *tfjson.ResourceChange, info hclroot.I
 		if _, set := res.Expressions[name]; set || dynamic[name] {
 			return false
 		}
-		// `dynamic` blocks are absent from expressions, and a module's source is not read, so a
-		// block-shaped value in a module resource may be a dynamic block.
-		return !(inModule && blockShaped(child(rc.Change.Before, name), child(rc.Change.After, name)))
+		// `dynamic` blocks are absent from expressions; when the source was not read, a
+		// block-shaped value may be one.
+		return known || !(blockShaped(child(rc.Change.Before, name), child(rc.Change.After, name)))
 	}
 }
 
@@ -337,58 +338,28 @@ func blockShaped(vals ...any) bool {
 }
 
 // findConfigResource follows a plan address such as `module.a[0].module.b["k"].aws_x.y[1]` through
-// the configuration's module_calls, ignoring instance keys. inModule is false for a root resource.
-func findConfigResource(cfg *tfjson.Config, address string) (res *tfjson.ConfigResource, inModule, ok bool) {
+// the configuration's module_calls, ignoring instance keys.
+func findConfigResource(cfg *tfjson.Config, address string) (*tfjson.ConfigResource, bool) {
 	if cfg.RootModule == nil {
-		return nil, false, false
+		return nil, false
 	}
-	segs := splitAddress(address)
+	segs := hclroot.SplitAddress(address)
 	mod := cfg.RootModule
 	for len(segs) >= 4 && segs[0] == "module" {
-		call := mod.ModuleCalls[stripKey(segs[1])]
+		call := mod.ModuleCalls[hclroot.StripKey(segs[1])]
 		if call == nil || call.Module == nil {
-			return nil, false, false
+			return nil, false
 		}
-		mod, segs, inModule = call.Module, segs[2:], true
+		mod, segs = call.Module, segs[2:]
 	}
 	if len(segs) != 2 {
-		return nil, false, false
+		return nil, false
 	}
-	typ, name := stripKey(segs[0]), stripKey(segs[1])
+	typ, name := hclroot.StripKey(segs[0]), hclroot.StripKey(segs[1])
 	for _, r := range mod.Resources {
 		if r.Mode == tfjson.ManagedResourceMode && r.Type == typ && r.Name == name {
-			return r, inModule, true
+			return r, true
 		}
 	}
-	return nil, false, false
-}
-
-func stripKey(seg string) string {
-	if i := strings.IndexByte(seg, '['); i >= 0 {
-		return seg[:i]
-	}
-	return seg
-}
-
-// splitAddress splits on dots outside brackets and quotes, so `a["x.y"]` stays one segment.
-func splitAddress(a string) []string {
-	var segs []string
-	depth, quoted, start := 0, false, 0
-	for i := 0; i < len(a); i++ {
-		switch c := a[i]; {
-		case quoted && c == '\\':
-			i++
-		case c == '"':
-			quoted = !quoted
-		case quoted:
-		case c == '[':
-			depth++
-		case c == ']':
-			depth--
-		case c == '.' && depth == 0:
-			segs = append(segs, a[start:i])
-			start = i + 1
-		}
-	}
-	return append(segs, a[start:])
+	return nil, false
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/akolomiiets/driftscan/internal/discover"
 	"github.com/akolomiiets/driftscan/internal/extract"
 	"github.com/akolomiiets/driftscan/internal/finding"
+	"github.com/akolomiiets/driftscan/internal/hclroot"
 	"github.com/akolomiiets/driftscan/internal/rules"
 	"github.com/akolomiiets/driftscan/internal/runner"
 )
@@ -68,7 +69,9 @@ func scanRoot(ctx context.Context, cfg config.Config, root discover.Root, r runn
 	if err != nil {
 		return fail(err.Error())
 	}
-	fs, err := extract.Drift(plans.RefreshOnly, root.Path, root.Info)
+	info := root.Info
+	info.ModuleSources = hclroot.LoadModules(root.Dir)
+	fs, err := extract.Drift(plans.RefreshOnly, root.Path, info)
 	if err != nil {
 		return fail(err.Error())
 	}

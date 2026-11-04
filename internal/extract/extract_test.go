@@ -194,7 +194,7 @@ func TestNotInConfigNeverLeaks(t *testing.T) {
 }
 
 func TestSplitAddress(t *testing.T) {
-	got := splitAddress(`module.a[0].module.b["x.y[z]"].aws_x.y[1]`)
+	got := hclroot.SplitAddress(`module.a[0].module.b["x.y[z]"].aws_x.y[1]`)
 	want := `module|a[0]|module|b["x.y[z]"]|aws_x|y[1]`
 	if strings.Join(got, "|") != want {
 		t.Errorf("got %q", got)
