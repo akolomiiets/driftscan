@@ -37,7 +37,7 @@ func sample() finding.Report {
 }
 
 func TestMarkdown(t *testing.T) {
-	md := Markdown(sample(), Source{})
+	md := Markdown(sample(), Source{}, MarkdownBudget)
 	for _, want := range []string{
 		":red_circle: 2 Roots scanned, 1 with Drift.",
 		"**2 Drift** | 1 Pending changes | 1 Scan errors | 0 acknowledged | 1 resolved",
@@ -55,7 +55,7 @@ func TestMarkdown(t *testing.T) {
 	}
 	first := sample()
 	first.Compared = false
-	if !strings.Contains(Markdown(first, Source{}), "No Baseline") {
+	if !strings.Contains(Markdown(first, Source{}, MarkdownBudget), "No Baseline") {
 		t.Error("first scan note missing")
 	}
 }
@@ -183,7 +183,7 @@ func TestOwnerShownWhenEnriched(t *testing.T) {
 		{Root: "a", Address: "aws_s3_bucket.b", Kind: finding.KindDrift, Paths: []string{"acl"}, Status: finding.StatusNew, Owner: "@org/sre"},
 		{Root: "a", Address: "aws_s3_bucket.c", Kind: finding.KindDrift, Paths: []string{"acl"}, Status: finding.StatusNew},
 	}}
-	md := Markdown(r, Source{})
+	md := Markdown(r, Source{}, MarkdownBudget)
 	if !strings.Contains(md, "| Owner |") || !strings.Contains(md, "| @org/sre |") || !strings.Contains(md, "| - |") {
 		t.Errorf("markdown missing owner column:\n%s", md)
 	}
@@ -191,7 +191,7 @@ func TestOwnerShownWhenEnriched(t *testing.T) {
 	if !strings.Contains(msgs[0], "acl - @org/sre") {
 		t.Errorf("slack missing owner: %s", msgs[0])
 	}
-	if strings.Contains(Markdown(finding.Report{Findings: r.Findings[1:]}, Source{}), "Owner") {
+	if strings.Contains(Markdown(finding.Report{Findings: r.Findings[1:]}, Source{}, MarkdownBudget), "Owner") {
 		t.Error("owner column shown without any owner")
 	}
 }
@@ -201,12 +201,12 @@ func TestChangedByShownInMarkdownAndSlack(t *testing.T) {
 		{Root: "a", Address: "aws_s3_bucket.b", Kind: finding.KindDrift, Paths: []string{"acl"}, Status: finding.StatusNew, Owner: "@org/sre", ChangedBy: "alice"},
 	}}
 
-	md := Markdown(r, Source{})
+	md := Markdown(r, Source{}, MarkdownBudget)
 	if !strings.Contains(md, "| Owner | Changed by |") || !strings.Contains(md, "| @org/sre | alice |") {
 		t.Errorf("markdown missing Changed by column:\n%s", md)
 	}
 	r.Findings[0].ChangedBy = ""
-	if strings.Contains(Markdown(r, Source{}), "Changed by") {
+	if strings.Contains(Markdown(r, Source{}, MarkdownBudget), "Changed by") {
 		t.Error("Changed by column shown without any actor")
 	}
 	if line := slackLine(finding.Finding{Root: "a", Address: "x", Kind: finding.KindDrift, Paths: []string{"acl"}, Owner: "o", ChangedBy: "alice"}, false); !strings.HasSuffix(line, "- o - changed by alice") {
@@ -220,16 +220,16 @@ func TestAdviceShownAndLabelled(t *testing.T) {
 	r.Findings[0].AdviceAction = "ignore"
 	r.Findings[0].AdviceIgnoreRule = "type: aws_security_group\nreason: managed"
 
-	md := Markdown(r, Source{})
+	md := Markdown(r, Source{}, MarkdownBudget)
 	if !strings.Contains(md, "AI-generated advice (1)") || !strings.Contains(md, "Likely console hotfix.") ||
-		!strings.Contains(md, "  type: aws_security_group") {
+		!strings.Contains(md, "<pre>type: aws_security_group&#10;reason: managed</pre>") {
 		t.Errorf("markdown missing advice:\n%s", md)
 	}
 	slack := SlackMessages(r, r.Findings[:1], "scan", "")[0]
 	if !strings.Contains(slack, "[AI: ignore]") {
 		t.Errorf("slack missing tag: %s", slack)
 	}
-	if strings.Contains(Markdown(sample(), Source{}), "AI-generated") {
+	if strings.Contains(Markdown(sample(), Source{}, MarkdownBudget), "AI-generated") {
 		t.Error("advice block shown without advice")
 	}
 }
@@ -240,7 +240,7 @@ func TestAdviceIsHTMLEscaped(t *testing.T) {
 	r.Findings[0].AdviceAction = "ignore"
 	r.Findings[0].AdviceIgnoreRule = "reason: <b>x</b>"
 
-	md := Markdown(r, Source{})
+	md := Markdown(r, Source{}, MarkdownBudget)
 
 	if strings.Contains(md, "<img") || strings.Contains(md, "<b>x</b>") || !strings.Contains(md, "&lt;img src=x") || !strings.Contains(md, "reason: &lt;b&gt;x") {
 		t.Errorf("advice not escaped:\n%s", md)
@@ -252,7 +252,7 @@ func TestAcknowledgedShowsReason(t *testing.T) {
 		{Root: "a", Address: "aws_security_group.x", Kind: finding.KindDrift, Paths: []string{"ingress[0].cidr_blocks"}, Status: finding.StatusNew, Acknowledged: true, AckReason: finding.AckNotReverted},
 		{Root: "a", Address: "aws_s3_bucket.y", Kind: finding.KindDrift, Paths: []string{"tags.A"}, Status: finding.StatusNew, Acknowledged: true},
 	}}
-	md := Markdown(r, Source{})
+	md := Markdown(r, Source{}, MarkdownBudget)
 	for _, want := range []string{"<summary><b>Acknowledged (2)</b></summary>", "| Reason |", "| not reverted by apply |", "| covered by lifecycle.ignore_changes |"} {
 		if !strings.Contains(md, want) {
 			t.Errorf("markdown missing %q:\n%s", want, md)

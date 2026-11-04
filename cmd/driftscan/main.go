@@ -129,6 +129,8 @@ func githubRunURL() string {
 }
 
 // sourceFromEnv builds the link base for source locations from the GitHub Actions environment.
+// When the scan directory cannot be placed inside GITHUB_WORKSPACE no link is built at all, so a
+// link never points to a wrong path.
 func sourceFromEnv(dir string) output.Source {
 	var src output.Source
 	server, repo, sha := os.Getenv("GITHUB_SERVER_URL"), os.Getenv("GITHUB_REPOSITORY"), os.Getenv("GITHUB_SHA")
@@ -139,19 +141,28 @@ func sourceFromEnv(dir string) output.Source {
 	if ws == "" {
 		return src
 	}
-	absWs, err1 := filepath.Abs(ws)
-	absDir, err2 := filepath.Abs(dir)
-	if err1 != nil || err2 != nil {
-		return src
-	}
+	absWs, absDir := resolvePath(ws), resolvePath(dir)
 	rel, err := filepath.Rel(absWs, absDir)
 	if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
-		return src
+		return output.Source{}
 	}
 	if rel = filepath.ToSlash(rel); rel != "." {
 		src.Prefix = rel
 	}
 	return src
+}
+
+// resolvePath returns the absolute path with symlinks resolved, or just the absolute path if
+// they cannot be resolved.
+func resolvePath(p string) string {
+	abs, err := filepath.Abs(p)
+	if err != nil {
+		return p
+	}
+	if real, err := filepath.EvalSymlinks(abs); err == nil {
+		return real
+	}
+	return abs
 }
 
 func loadConfig(path, dir string) (config.Config, error) {
@@ -174,6 +185,11 @@ func cmdScan(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		return exitError
 	}
 	e.dir = *dir
+	modes, err := e.parseModes()
+	if err != nil {
+		fmt.Fprintln(stderr, "driftscan:", err)
+		return exitError
+	}
 
 	cfg, err := loadConfig(e.configPath, *dir)
 	if err != nil {
@@ -214,7 +230,7 @@ func cmdScan(ctx context.Context, args []string, stdout, stderr io.Writer) int {
 		}
 		return exitOK
 	}
-	return emit(ctx, cfg, e, raw, stdout, stderr)
+	return emit(ctx, cfg, e, modes, raw, stdout, stderr)
 }
 
 func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int {
@@ -227,11 +243,16 @@ func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		return exitError
 	}
 	e.dir = *dir
+	modes, err := e.parseModes()
+	if err != nil {
+		fmt.Fprintln(stderr, "driftscan:", err)
+		return exitError
+	}
 	if fs.NArg() == 0 {
 		fmt.Fprintln(stderr, "driftscan report: give at least one raw Report")
 		return exitError
 	}
-	cfg, err := loadConfig(e.configPath, ".")
+	cfg, err := loadConfig(e.configPath, *dir)
 	if err != nil {
 		fmt.Fprintln(stderr, "driftscan:", err)
 		return exitError
@@ -249,7 +270,7 @@ func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	if merged.Partial {
 		fmt.Fprintln(stderr, "driftscan: shard Reports are incomplete; Findings of Roots not scanned stay unknown")
 	}
-	return emit(ctx, cfg, e, merged, stdout, stderr)
+	return emit(ctx, cfg, e, modes, merged, stdout, stderr)
 }
 
 // merge joins shard Reports. Shards never share a Root, so findings are concatenated. The result
@@ -287,6 +308,30 @@ func merge(parts []finding.Report) finding.Report {
 	return out
 }
 
+// emitModes are the parsed values of -annotations and -fail-on.
+type emitModes struct {
+	annotate  bool
+	failOff   bool
+	threshold finding.Severity
+}
+
+// parseModes validates -annotations and -fail-on; scan and report call it before any real work.
+func (e emitFlags) parseModes() (emitModes, error) {
+	var m emitModes
+	m.failOff = e.failOn == "none"
+	if !m.failOff {
+		var err error
+		if m.threshold, err = finding.ParseSeverity(e.failOn); err != nil {
+			return m, fmt.Errorf("-fail-on: %w", err)
+		}
+	}
+	var err error
+	if m.annotate, err = annotationsEnabled(e.annotations); err != nil {
+		return m, fmt.Errorf("-annotations: %w", err)
+	}
+	return m, nil
+}
+
 func annotationsEnabled(mode string) (bool, error) {
 	switch mode {
 	case "on":
@@ -299,23 +344,7 @@ func annotationsEnabled(mode string) (bool, error) {
 	return false, fmt.Errorf("unknown value %q (want auto, on or off)", mode)
 }
 
-func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Report, stdout, stderr io.Writer) int {
-	var threshold finding.Severity
-	failOff := e.failOn == "none"
-	if !failOff {
-		var err error
-		if threshold, err = finding.ParseSeverity(e.failOn); err != nil {
-			fmt.Fprintln(stderr, "driftscan: -fail-on:", err)
-			return exitError
-		}
-	}
-
-	annotate, err := annotationsEnabled(e.annotations)
-	if err != nil {
-		fmt.Fprintln(stderr, "driftscan: -annotations:", err)
-		return exitError
-	}
-
+func emit(ctx context.Context, cfg config.Config, e emitFlags, modes emitModes, raw finding.Report, stdout, stderr io.Writer) int {
 	var base *finding.Report
 	if e.baseline != "" {
 		b, err := readReport(e.baseline)
@@ -337,16 +366,16 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 		fmt.Fprintf(stderr, "driftscan: %s: %v\n", what, err)
 		code = exitError
 	}
-	md := output.Markdown(rep, sourceFromEnv(e.dir))
+	src := sourceFromEnv(e.dir)
 	if path := markdownPath(e.markdown); path != "" {
-		if err := appendFile(path, md); err != nil {
+		if err := appendMarkdown(path, rep, src); err != nil {
 			fail("markdown", err)
 		}
 	} else if e.markdown == "auto" {
-		fmt.Fprint(stdout, md)
+		fmt.Fprint(stdout, output.Markdown(rep, src, output.MarkdownBudget))
 	}
-	if annotate {
-		for _, l := range output.Annotations(rep, sourceFromEnv(e.dir), e.annotatePending) {
+	if modes.annotate {
+		for _, l := range output.Annotations(rep, src, e.annotatePending) {
 			fmt.Fprintln(stdout, l)
 		}
 	}
@@ -360,7 +389,7 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 		}
 	}
 	if e.html != "" {
-		b, err := output.HTML(rep, sourceFromEnv(e.dir), now)
+		b, err := output.HTML(rep, src, now)
 		if err == nil {
 			err = os.WriteFile(e.html, b, 0o644)
 		}
@@ -410,9 +439,9 @@ func emit(ctx context.Context, cfg config.Config, e emitFlags, raw finding.Repor
 	if code != exitOK {
 		return code
 	}
-	if !failOff {
-		if failing := compare.Failing(rep, threshold); len(failing) > 0 {
-			fmt.Fprintf(stderr, "driftscan: %d active Findings at or above %s\n", len(failing), threshold)
+	if !modes.failOff {
+		if failing := compare.Failing(rep, modes.threshold); len(failing) > 0 {
+			fmt.Fprintf(stderr, "driftscan: %d active Findings at or above %s\n", len(failing), modes.threshold)
 			return exitFindings
 		}
 	}
@@ -454,6 +483,36 @@ func writeReport(path string, r finding.Report) error {
 		return err
 	}
 	return os.WriteFile(path, append(b, '\n'), 0o644)
+}
+
+// minAppendBudget is the smallest budget used when the summary file is already nearly full.
+const minAppendBudget = 4 * 1024
+
+// appendMarkdown appends the summary to path. Whatever the file already holds counts against the
+// size limit, and a missing final newline is added so the summary starts on its own line.
+func appendMarkdown(path string, rep finding.Report, src output.Source) error {
+	budget, prefix := output.MarkdownBudget, ""
+	if fi, err := os.Stat(path); err == nil && fi.Size() > 0 {
+		budget = max(budget-int(fi.Size()), minAppendBudget)
+		if !endsWithNewline(path, fi.Size()) {
+			prefix = "\n"
+			budget--
+		}
+	}
+	return appendFile(path, prefix+output.Markdown(rep, src, budget))
+}
+
+func endsWithNewline(path string, size int64) bool {
+	f, err := os.Open(path)
+	if err != nil {
+		return true
+	}
+	defer f.Close()
+	var last [1]byte
+	if _, err := f.ReadAt(last[:], size-1); err != nil {
+		return true
+	}
+	return last[0] == '\n'
 }
 
 func appendFile(path, s string) error {

@@ -140,7 +140,7 @@ func TestAnnotationsTruncatePerLevel(t *testing.T) {
 	if len(got) != 13 {
 		t.Fatalf("want 9+1 errors and 3 warnings, got %d: %q", len(got), got)
 	}
-	wantSummary := "::error title=driftscan::3 more error Findings, see the step summary or report artifact"
+	wantSummary := "::error title=driftscan::3 more error Findings, see the step summary"
 	if got[9] != wantSummary {
 		t.Fatalf("summary: got %q, want %q", got[9], wantSummary)
 	}

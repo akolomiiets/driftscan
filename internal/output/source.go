@@ -35,11 +35,11 @@ func (s Source) URL(f finding.Finding) string {
 	for i, seg := range segs {
 		segs[i] = url.PathEscape(seg)
 	}
-	u := strings.TrimRight(s.BlobURL, "/") + "/" + strings.Join(segs, "/")
+	u := s.BlobURL + "/" + strings.Join(segs, "/")
 	if f.Line > 0 {
 		u += "#L" + strconv.Itoa(f.Line)
 	}
 	return urlParens.Replace(u)
 }
 
-var urlParens = strings.NewReplacer("(", "%28", ")", "%29", " ", "%20", "<", "%3C", ">", "%3E")
+var urlParens = strings.NewReplacer("(", "%28", ")", "%29")

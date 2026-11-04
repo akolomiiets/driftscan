@@ -83,13 +83,14 @@ the next run alerts again.
 Large repos: run `scan -shard i/n -raw-out raw-i.json` in a matrix job, then
 `driftscan report -baseline ... raw-*.json` in one job. A merge missing a shard is marked partial and
 does not resolve anything for the Roots it did not see. Pass `report -C dir` (the directory the shards scanned,
-default `.`) so the Markdown summary can link source locations; in GitHub Actions it links `file:line` to the commit
+default `.`) so the Markdown summary can link source locations (it assumes all parts were scanned from that same directory); in GitHub Actions it links `file:line` to the commit
 when `GITHUB_SERVER_URL`, `GITHUB_REPOSITORY` and `GITHUB_SHA` are set.
 
 `scan` and `report` also print GitHub Actions annotations (`::error`, `::warning`, `::notice`) for new and
 changed Findings, so they show up on the run and on the pull request diff. `-annotations auto|on|off` (default
 `auto`: on when `GITHUB_ACTIONS` is `true`) controls it; `-annotate-pending=false` leaves out pending changes.
-Acknowledged Findings are never annotated. GitHub shows at most 10 annotations per level and step, so
+Acknowledged Findings are never annotated. On a first Scan (no Baseline) everything is new, so annotations fire for
+every active Finding. GitHub shows at most 10 annotations per level and step, so
 driftscan emits the 9 most severe and one summary line for the rest.
 
 ## HTML report

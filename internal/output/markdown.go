@@ -40,8 +40,8 @@ func Count(r finding.Report) Counts {
 	return c
 }
 
-// MarkdownBudget is the largest summary Markdown returns: GitHub rejects a step summary over 1 MiB.
-var MarkdownBudget = 1000 * 1024
+// MarkdownBudget is the default size limit for Markdown: GitHub rejects a step summary over 1 MiB.
+const MarkdownBudget = 1000 * 1024
 
 type mdSection struct {
 	title string
@@ -51,8 +51,8 @@ type mdSection struct {
 }
 
 // Markdown renders the whole Report, suitable for $GITHUB_STEP_SUMMARY. When the result would exceed
-// MarkdownBudget, whole Findings are dropped from the lowest-priority end.
-func Markdown(r finding.Report, src Source) string {
+// budget bytes, whole Findings are dropped from the lowest-priority end.
+func Markdown(r finding.Report, src Source, budget int) string {
 	owners, actors := false, false
 	for _, f := range r.Findings {
 		owners = owners || f.Owner != ""
@@ -64,13 +64,13 @@ func Markdown(r finding.Report, src Source) string {
 		total += len(s.rows)
 	}
 	render := func(n int) string { return renderMarkdown(r, src, sections, owners, actors, n, total) }
-	if full := render(total); len(full) <= MarkdownBudget {
+	if full := render(total); len(full) <= budget {
 		return full
 	}
 	lo, hi := 0, total-1
 	for lo < hi {
 		mid := (lo + hi + 1) / 2
-		if len(render(mid)) <= MarkdownBudget {
+		if len(render(mid)) <= budget {
 			lo = mid
 		} else {
 			hi = mid - 1
@@ -148,7 +148,7 @@ func renderMarkdown(r finding.Report, src Source, sections []mdSection, owners, 
 		}
 	}
 	if kept < total {
-		fmt.Fprintf(&b, "_%d more Findings not shown, see the report artifact._\n", total-kept)
+		fmt.Fprintf(&b, "_%d more Findings not shown; see the JSON Report or the HTML report (-html)._\n", total-kept)
 	}
 	return b.String()
 }
@@ -168,11 +168,10 @@ func writeAdvice(b *strings.Builder, rows []finding.Finding) {
 	for _, f := range advised {
 		fmt.Fprintf(b, "- %s **%s**: %s\n", code(f.Address), esc(f.AdviceAction), esc(f.Advice))
 		if f.AdviceIgnoreRule != "" {
-			b.WriteString("\n  ```yaml\n")
-			for _, l := range strings.Split(f.AdviceIgnoreRule, "\n") {
-				b.WriteString("  " + html.EscapeString(l) + "\n")
-			}
-			b.WriteString("  ```\n\n")
+			// One physical line with entities for newlines and backticks: a blank line or a fence
+			// inside the rule can then neither end the HTML block nor start Markdown.
+			rule := strings.NewReplacer("`", "&#96;", "\r\n", "&#10;", "\n", "&#10;", "\r", "&#10;").Replace(html.EscapeString(f.AdviceIgnoreRule))
+			b.WriteString("\n  <pre>" + rule + "</pre>\n\n")
 		}
 	}
 	b.WriteString("\n</details>\n\n")
@@ -246,7 +245,7 @@ func writeHeader(b *strings.Builder, r finding.Report) {
 	}
 	var added, changed int
 	for _, f := range r.Findings {
-		if !f.Active() {
+		if !f.Active() || f.Acknowledged {
 			continue
 		}
 		switch f.Status {

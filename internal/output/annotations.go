@@ -53,7 +53,7 @@ func Annotations(r finding.Report, src Source, pending bool) []string {
 			out = append(out, annotationLine(lvl, f, src))
 		}
 		if len(shown) < len(fs) {
-			msg := fmt.Sprintf("%d more %s Findings, see the step summary or report artifact", len(fs)-len(shown), lvl)
+			msg := fmt.Sprintf("%d more %s Findings, see the step summary", len(fs)-len(shown), lvl)
 			out = append(out, "::"+lvl+" title=driftscan::"+annotationData.Replace(msg))
 		}
 	}
