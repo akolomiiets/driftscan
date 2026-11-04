@@ -233,8 +233,8 @@ func TestMissingPlannedChangeIsActionable(t *testing.T) {
 }
 
 func TestReplacePaths(t *testing.T) {
-	raw := []any{[]any{"rule", float64(1), "cidr"}, []any{"tags", "a.b"}, []any{"a", "b", "c", "d"}, "bad", []any{}}
-	want := `rule[1].cidr,tags["a.b"],a.b.c`
+	raw := []any{[]any{"rule", float64(1), "cidr"}, []any{"tags", "a.b"}, []any{"a", "b", "c", "d"}, "bad", []any{}, []any{"ingress", map[string]any{"from_port": float64(22)}, "cidr"}}
+	want := `rule[1].cidr,tags["a.b"],a.b.c,ingress`
 	if got := strings.Join(replacePaths(raw), ","); got != want {
 		t.Errorf("got %q, want %q", got, want)
 	}

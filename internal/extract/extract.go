@@ -338,6 +338,7 @@ func replacePaths(raw []any) []string {
 			continue
 		}
 		var path []string
+	walk:
 		for _, st := range steps {
 			if len(path) == MaxPathDepth {
 				break
@@ -347,6 +348,9 @@ func replacePaths(raw []any) []string {
 				path = append(path, hclroot.KeyStep(v, len(path) == 0))
 			case float64:
 				path = append(path, "["+strconv.Itoa(int(v))+"]")
+			default:
+				// A set element keyed by its value (an object): keep the prefix so overlap stays wide.
+				break walk
 			}
 		}
 		if len(path) > 0 {
