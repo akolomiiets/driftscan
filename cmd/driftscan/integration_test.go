@@ -21,7 +21,7 @@ func TestIntegration(t *testing.T) {
 		bin = "terraform"
 	}
 	if _, err := exec.LookPath(bin); err != nil {
-		if os.Getenv("GITHUB_ACTIONS") == "true" {
+		if onGitHubActions {
 			t.Fatalf("%s not installed", bin)
 		}
 		t.Skipf("%s not installed", bin)
