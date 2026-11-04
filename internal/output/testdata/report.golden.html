@@ -53,6 +53,7 @@ summary .small{color:var(--muted);margin-left:.6rem}
 .rows.has-detail{min-width:60rem}
 .rows th,.rows td{font-size:.9rem}
 code,.loc{font:.85rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:break-word}
+.seg{white-space:nowrap}
 .p{display:inline-block;max-width:100%;overflow-wrap:anywhere}
 details.more>summary{cursor:pointer;color:var(--muted);font-family:system-ui,sans-serif;font-size:.85rem}
 .sev{display:inline-block;padding:0 .4em;border:1px solid currentColor;font-size:.8rem;color:var(--muted)}
@@ -144,18 +145,18 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <td>Drift</td>
 <td><span class="sev sev-medium">medium</span></td>
 <td class="st st-changed">changed (2 scans)</td>
-<td><code>aws_s3_bucket.<wbr>logs</code></td>
+<td><code><span class="seg">aws_s3_bucket.</span><wbr><span class="seg">logs</span></code></td>
 <td><code class="paths"><span class="p">versioning[0].enabled,</span> <span class="p">tags.Team</span></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L30" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>dev/<wbr>data/<wbr>s3.tf:30</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L30" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">dev/</span><wbr><span class="seg">data/</span><wbr><span class="seg">s3.tf:30</span></a></td>
 <td><span class="detail">owner: @org/data</span><span class="detail">changed by: alice</span></td>
 </tr>
 <tr data-env="envs/dev" data-kind="drift" data-sev="2" data-status="persisting" data-q="envs/dev/data module.rds_core.module.parameters.aws_db_parameter_group.main[&#34;primary&#34;] parameter[0].apply_method, parameter[1].apply_method, parameter[2].apply_method, parameter[3].apply_method, parameter[4].apply_method, parameter[5].apply_method, parameter[6].apply_method, parameter[7].apply_method, parameter[8].apply_method, parameter[9].apply_method, parameter[10].apply_method, parameter[11].apply_method, parameter[12].apply_method, parameter[13].apply_method, parameter[14].apply_method  infra/envs/dev/data/modules/rds_core/parameters/parameter_group.tf:44 ">
 <td>Drift</td>
 <td><span class="sev sev-medium">medium</span></td>
 <td class="st st-persisting">persisting (2 scans)</td>
-<td><code>module.<wbr>rds_core.<wbr>module.<wbr>parameters.<wbr>aws_db_parameter_group.<wbr>main<wbr>[&#34;primary&#34;]</code></td>
+<td><code><span class="seg">module.</span><wbr><span class="seg">rds_core.</span><wbr><span class="seg">module.</span><wbr><span class="seg">parameters.</span><wbr><span class="seg">aws_db_parameter_group.</span><wbr><span class="seg">main</span><wbr><span class="seg">[&#34;primary&#34;]</span></code></td>
 <td><code class="paths"><span class="p">parameter[0].apply_method,</span> <span class="p">parameter[1].apply_method,</span> <span class="p">parameter[2].apply_method,</span> <span class="p">parameter[3].apply_method,</span> <span class="p">parameter[4].apply_method,</span> <span class="p">parameter[5].apply_method,</span><details class="more"><summary>&#43;9 more</summary><span class="p">parameter[6].apply_method,</span> <span class="p">parameter[7].apply_method,</span> <span class="p">parameter[8].apply_method,</span> <span class="p">parameter[9].apply_method,</span> <span class="p">parameter[10].apply_method,</span> <span class="p">parameter[11].apply_method,</span> <span class="p">parameter[12].apply_method,</span> <span class="p">parameter[13].apply_method,</span> <span class="p">parameter[14].apply_method</span></details></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/modules/rds_core/parameters/parameter_group.tf#L44" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>dev/<wbr>data/<wbr>modules/<wbr>rds_core/<wbr>parameters/<wbr>parameter_group.tf:44</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/modules/rds_core/parameters/parameter_group.tf#L44" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">dev/</span><wbr><span class="seg">data/</span><wbr><span class="seg">modules/</span><wbr><span class="seg">rds_core/</span><wbr><span class="seg">parameters/</span><wbr><span class="seg">parameter_group.tf:44</span></a></td>
 <td></td>
 </tr>
 </tbody>
@@ -168,9 +169,9 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <td>Drift</td>
 <td><span class="sev sev-info">info</span></td>
 <td class="st st-new">new</td>
-<td><code>aws_s3_bucket.<wbr>assets</code></td>
+<td><code><span class="seg">aws_s3_bucket.</span><wbr><span class="seg">assets</span></code></td>
 <td><code class="paths"><span class="p">tags.Name</span></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L5" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>dev/<wbr>data/<wbr>s3.tf:5</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/data/s3.tf#L5" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">dev/</span><wbr><span class="seg">data/</span><wbr><span class="seg">s3.tf:5</span></a></td>
 <td><span class="detail">acknowledged: covered by lifecycle.ignore_changes</span></td>
 </tr>
 </tbody>
@@ -186,18 +187,18 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <td>Drift</td>
 <td><span class="sev sev-high">high</span></td>
 <td class="st st-persisting">persisting (3 scans)</td>
-<td><code>aws_security_group.<wbr>web</code></td>
+<td><code><span class="seg">aws_security_group.</span><wbr><span class="seg">web</span></code></td>
 <td><code class="paths"><span class="p">ingress[0].cidr_blocks</span></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/sg.tf#L12" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>dev/<wbr>network/<wbr>sg.tf:12</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/sg.tf#L12" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">dev/</span><wbr><span class="seg">network/</span><wbr><span class="seg">sg.tf:12</span></a></td>
 <td><span class="detail">owner: @org/sre</span></td>
 </tr>
 <tr class="resolved" data-env="envs/dev" data-kind="drift" data-sev="2" data-status="resolved" data-q="envs/dev/network aws_vpc.main   infra/envs/dev/network/vpc.tf:1 ">
 <td>Drift</td>
 <td><span class="sev sev-medium">medium</span></td>
 <td class="st st-resolved">resolved</td>
-<td><code>aws_vpc.<wbr>main</code></td>
+<td><code><span class="seg">aws_vpc.</span><wbr><span class="seg">main</span></code></td>
 <td></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/vpc.tf#L1" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>dev/<wbr>network/<wbr>vpc.tf:1</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/dev/network/vpc.tf#L1" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">dev/</span><wbr><span class="seg">network/</span><wbr><span class="seg">vpc.tf:1</span></a></td>
 <td></td>
 </tr>
 </tbody>
@@ -223,9 +224,9 @@ found infra/envs/prod/iam/backend.tf:2 ">
 <td>Scan error</td>
 <td><span class="sev sev-high">high</span></td>
 <td class="st st-new">new</td>
-<td><code></code></td>
+<td><code><span class="seg"></span></code></td>
 <td></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/iam/backend.tf#L2" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>prod/<wbr>iam/<wbr>backend.tf:2</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/iam/backend.tf#L2" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">prod/</span><wbr><span class="seg">iam/</span><wbr><span class="seg">backend.tf:2</span></a></td>
 <td><span class="msg">Error: no valid credential sources
 found</span></td>
 </tr>
@@ -243,9 +244,9 @@ found</span></td>
 <td>Pending</td>
 <td><span class="sev sev-low">low</span></td>
 <td class="st st-persisting">persisting (5 scans)</td>
-<td><code>aws_lb.<wbr>front</code></td>
+<td><code><span class="seg">aws_lb.</span><wbr><span class="seg">front</span></code></td>
 <td><code class="paths"><span class="p">idle_timeout</span></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/lb%20%28old%29.tf#L3" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>prod/<wbr>network/<wbr>lb (old).tf:3</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/lb%20%28old%29.tf#L3" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">prod/</span><wbr><span class="seg">network/</span><wbr><span class="seg">lb (old).tf:3</span></a></td>
 </tr>
 </tbody>
 </table></div>
@@ -257,9 +258,9 @@ found</span></td>
 <td>Drift</td>
 <td><span class="sev sev-critical">critical</span></td>
 <td class="st st-new">new</td>
-<td><code>aws_route_table.<wbr>private</code></td>
+<td><code><span class="seg">aws_route_table.</span><wbr><span class="seg">private</span></code></td>
 <td><code class="paths"><span class="p">route</span></code></td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/rt.tf#L9" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>prod/<wbr>network/<wbr>rt.tf:9</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/network/rt.tf#L9" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">prod/</span><wbr><span class="seg">network/</span><wbr><span class="seg">rt.tf:9</span></a></td>
 <td><span class="detail">acknowledged: not reverted by apply</span></td>
 </tr>
 </tbody>
@@ -275,9 +276,9 @@ found</span></td>
 <td>Pending</td>
 <td><span class="sev sev-info">info</span></td>
 <td class="st st-unknown">unknown</td>
-<td><code>aws_sqs_queue.<wbr>jobs</code></td>
+<td><code><span class="seg">aws_sqs_queue.</span><wbr><span class="seg">jobs</span></code></td>
 <td>delete, create</td>
-<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/queue/main.tf" target="_blank" rel="noopener noreferrer">infra/<wbr>envs/<wbr>prod/<wbr>queue/<wbr>main.tf</a></td>
+<td><a class="loc" href="https://github.com/acme/infra-repo/blob/abc123/infra/envs/prod/queue/main.tf" target="_blank" rel="noopener noreferrer"><span class="seg">infra/</span><wbr><span class="seg">envs/</span><wbr><span class="seg">prod/</span><wbr><span class="seg">queue/</span><wbr><span class="seg">main.tf</span></a></td>
 </tr>
 </tbody>
 </table></div>

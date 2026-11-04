@@ -53,6 +53,7 @@ summary .small{color:var(--muted);margin-left:.6rem}
 .rows.has-detail{min-width:60rem}
 .rows th,.rows td{font-size:.9rem}
 code,.loc{font:.85rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;overflow-wrap:break-word}
+.seg{white-space:nowrap}
 .p{display:inline-block;max-width:100%;overflow-wrap:anywhere}
 details.more>summary{cursor:pointer;color:var(--muted);font-family:system-ui,sans-serif;font-size:.85rem}
 .sev{display:inline-block;padding:0 .4em;border:1px solid currentColor;font-size:.8rem;color:var(--muted)}
@@ -134,11 +135,11 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <td>{{.KindText}}</td>
 <td><span class="sev sev-{{.Severity}}">{{.Severity}}</span></td>
 <td class="st st-{{.StatusKey}}">{{.StatusText}}</td>
-<td>{{if .Address}}<code>{{range $i, $s := .Address}}{{if $i}}<wbr>{{end}}{{$s}}{{end}}</code>{{else}}-{{end}}</td>
+<td>{{if .Address}}<code>{{range $i, $s := .Address}}{{if $i}}<wbr>{{end}}<span class="seg">{{$s}}</span>{{end}}</code>{{else}}-{{end}}</td>
 <td>{{if .ShownPaths}}<code class="paths">{{range $i, $p := .ShownPaths}}{{if $i}} {{end}}<span class="p">{{$p}}</span>{{end}}{{if .MorePaths}}<details class="more"><summary>{{.MoreLabel}}</summary>{{range $i, $p := .MorePaths}}{{if $i}} {{end}}<span class="p">{{$p}}</span>{{end}}</details>{{end}}</code>{{else}}{{.Actions}}{{end}}</td>
 <td>{{if .LocURL}}<a class="loc" href="{{.LocURL}}" target="_blank" rel="noopener noreferrer">{{template "parts" .LocParts}}</a>{{else if .Loc}}<span class="loc">{{template "parts" .LocParts}}</span>{{else}}-{{end}}</td>
 {{if $detail}}<td>{{if .Message}}<span class="msg">{{.Message}}</span>{{end}}{{if .AckText}}<span class="detail">{{.AckText}}</span>{{end}}{{if .Owner}}<span class="detail">owner: {{.Owner}}</span>{{end}}{{if .ChangedBy}}<span class="detail">changed by: {{.ChangedBy}}</span>{{end}}</td>
 {{end}}</tr>
 {{end}}</tbody>
 </table>{{end}}
-{{define "parts"}}{{range $i, $s := .}}{{if $i}}<wbr>{{end}}{{$s}}{{end}}{{end}}
+{{define "parts"}}{{range $i, $s := .}}{{if $i}}<wbr>{{end}}<span class="seg">{{$s}}</span>{{end}}{{end}}
