@@ -195,3 +195,14 @@ func TestSourcePathAndURL(t *testing.T) {
 		})
 	}
 }
+
+func TestMarkdownPartialNote(t *testing.T) {
+	r := goldenReport()
+	r.Partial = true
+
+	md := Markdown(r, Source{}, MarkdownBudget)
+
+	if !strings.Contains(md, "Partial report: some Roots were not scanned, so Findings of absent Roots are unknown, not resolved.") {
+		t.Errorf("missing partial note:\n%s", md)
+	}
+}

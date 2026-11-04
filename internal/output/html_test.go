@@ -3,6 +3,7 @@ package output
 import (
 	"crypto/sha256"
 	"encoding/base64"
+	"html"
 	"regexp"
 	"strconv"
 	"strings"
@@ -205,7 +206,7 @@ func TestHTMLCSPHashMatchesScript(t *testing.T) {
 	end := strings.Index(out, "</script>")
 	sum := sha256.Sum256([]byte(out[start:end]))
 
-	if m == nil || m[1] != base64.StdEncoding.EncodeToString(sum[:]) {
+	if m == nil || html.UnescapeString(m[1]) != base64.StdEncoding.EncodeToString(sum[:]) {
 		t.Errorf("CSP hash %v does not match the inline script", m)
 	}
 }
@@ -245,16 +246,17 @@ func TestHTMLMapListsEnvironmentsProblemsFirst(t *testing.T) {
 }
 
 func TestHeadline(t *testing.T) {
-	drift := htmlRoot{State: "drift"}
+	drift := htmlRoot{State: "drift", Drift: 1}
 	failed := htmlRoot{State: "error"}
 	for name, tc := range map[string]struct {
 		groups []htmlEnv
 		want   string
 	}{
-		"drift":  {[]htmlEnv{{Roots: []htmlRoot{drift}, Counts: Counts{Drift: 1}}}, "1 drifted resource in 1 Root across 1 environment"},
-		"errors": {[]htmlEnv{{Roots: []htmlRoot{failed}}}, "1 Root could not be planned. No drift found in the rest."},
-		"both":   {[]htmlEnv{{Roots: []htmlRoot{drift, failed}, Counts: Counts{Drift: 3}}}, "3 drifted resources in 1 Root across 1 environment. 1 Root could not be planned."},
-		"clean":  {[]htmlEnv{{}, {}}, "No drift across 2 environments"},
+		"drift":                         {[]htmlEnv{{Roots: []htmlRoot{drift}, Counts: Counts{Drift: 1}}}, "1 drifted resource in 1 Root across 1 environment"},
+		"errors":                        {[]htmlEnv{{Roots: []htmlRoot{failed}}}, "1 Root could not be planned. No drift found in the rest."},
+		"both":                          {[]htmlEnv{{Roots: []htmlRoot{drift, failed}, Counts: Counts{Drift: 3}}}, "3 drifted resources in 1 Root across 1 environment. 1 Root could not be planned."},
+		"unknown drift on errored Root": {[]htmlEnv{{Roots: []htmlRoot{{State: "error", Drift: 2}}, Counts: Counts{Drift: 2}}}, "2 drifted resources in 1 Root across 1 environment. 1 Root could not be planned."},
+		"clean":                         {[]htmlEnv{{}, {}}, "No drift across 2 environments"},
 	} {
 		if got := headline(tc.groups); got != tc.want {
 			t.Errorf("%s: got %q, want %q", name, got, tc.want)
@@ -298,5 +300,21 @@ func TestRootEnv(t *testing.T) {
 		if got := rootEnv(in); got != want {
 			t.Errorf("rootEnv(%q) = %q, want %q", in, got, want)
 		}
+	}
+}
+
+func TestHTMLCountersExcludeAcknowledged(t *testing.T) {
+	r := finding.Report{Compared: true, Findings: []finding.Finding{
+		{Root: "a", Address: "x.one", Kind: finding.KindDrift, Status: finding.StatusNew},
+		{Root: "a", Address: "x.two", Kind: finding.KindDrift, Status: finding.StatusNew, Acknowledged: true},
+	}}
+
+	b, err := HTML(r, Source{}, htmlGenerated)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !strings.Contains(string(b), "1 new, 0 changed.") {
+		t.Errorf("acknowledged Finding must not be counted as new:\n%s", b)
 	}
 }

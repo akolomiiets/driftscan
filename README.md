@@ -84,10 +84,10 @@ Large repos: run `scan -shard i/n -raw-out raw-i.json` in a matrix job, then
 `driftscan report -baseline ... raw-*.json` in one job. A merge missing a shard is marked partial and
 does not resolve anything for the Roots it did not see. The same holds for two or more unsharded Reports (for example one
 per environment), since nothing proves they cover every Root: pass `report -complete` when they do, and Baseline Findings
-of Roots absent from them resolve. `-complete` never overrides a shard split that is missing a shard or a Report that is
-partial on its own. For a per-environment matrix, run `scan -raw-out raw-ENV.json` in each job from one common
+of Roots absent from them resolve. `-complete` never overrides a shard split that is missing a shard, a repeated shard index, or a Report that is
+partial on its own. Shards of several environments must be merged per environment first (or use distinct shard counts), because a repeated shard index marks the merge partial. For a per-environment matrix, run `scan -raw-out raw-ENV.json` in each job from one common
 directory (so Root paths stay distinct; driftscan warns about duplicates), then `driftscan report -complete raw-*.json`. Pass `report -C dir` (the directory the shards scanned,
-default `.`) so the Markdown summary can link source locations (it assumes all parts were scanned from that same directory); in GitHub Actions it links `file:line` to the commit
+default `.`) so annotation file paths, HTML links and the Markdown summary can link source locations (it assumes all parts were scanned from that same directory); in GitHub Actions it links `file:line` to the commit
 when `GITHUB_SERVER_URL`, `GITHUB_REPOSITORY` and `GITHUB_SHA` are set.
 
 `scan` and `report` also print GitHub Actions annotations (`::error`, `::warning`, `::notice`) for new and

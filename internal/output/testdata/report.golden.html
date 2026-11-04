@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-7ZVIbEpIa1ld2GQLLw8WwkIfQBNmnbU3YPG0lY3yXLs='; base-uri 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'sha256-Fx&#43;JtjxAeE4cwhc8hHy8GPq0NStilBZzOKEGha3swPk='; base-uri 'none'">
 <meta name="color-scheme" content="light dark">
 <title>driftscan report</title>
 <style>
@@ -43,6 +43,7 @@ a.cell:hover{outline:2px solid var(--ink);outline-offset:1px}
 #filters label{display:flex;flex-direction:column;font-size:.9rem;color:var(--muted)}
 select,input{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--rule);border-radius:0;padding:.25rem .4rem;max-width:100%}
 #shown{margin:.75rem 0 0;color:var(--muted)}
+details.root,section.env{scroll-margin-top:6rem}
 details.root{border-bottom:1px solid var(--rule)}
 details.root>summary{padding:.55rem 0;cursor:pointer}
 summary .path{font:600 .9rem ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;margin-left:.25rem}
@@ -72,7 +73,7 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <div class="page">
 <header>
 <h1>3 drifted resources in 2 Roots across 3 environments. 1 Root could not be planned.</h1>
-<p class="meta">driftscan v0.2.0 scanned 8 Roots on 2026-11-04 12:00 UTC in 5m52s. Compared with the previous Scan: 3 new, 1 changed.</p>
+<p class="meta">driftscan v0.2.0 scanned 8 Roots on 2026-11-04 12:00 UTC in 5m52s. Compared with the previous Scan: 1 new, 1 changed.</p>
 
 
 <div class="mapwrap">
@@ -93,7 +94,7 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <tr>
 <th scope="row"><a class="envlink" href="#env-envs-prod-31740ff5" data-env="envs/prod">envs/prod</a></th>
 <td class="num">4</td>
-<td><span class="strip"><a class="cell s-error" href="#root-envs-prod-iam-788d382c" title="envs/prod/iam: 1 scan errors" aria-label="envs/prod/iam: 1 scan errors"></a><a class="cell s-pending" href="#root-envs-prod-network-91c0b22d" title="envs/prod/network: 1 pending, 1 acknowledged" aria-label="envs/prod/network: 1 pending, 1 acknowledged"></a><a class="cell s-pending" href="#root-envs-prod-queue-db447816" title="envs/prod/queue: 1 pending" aria-label="envs/prod/queue: 1 pending"></a><a class="cell s-clean" href="#root-envs-prod-data-c02663d0" title="envs/prod/data: clean" aria-label="envs/prod/data: clean"></a></span></td>
+<td><span class="strip"><a class="cell s-error" href="#root-envs-prod-iam-788d382c" title="envs/prod/iam: 1 scan error" aria-label="envs/prod/iam: 1 scan error"></a><a class="cell s-pending" href="#root-envs-prod-network-91c0b22d" title="envs/prod/network: 1 pending, 1 acknowledged" aria-label="envs/prod/network: 1 pending, 1 acknowledged"></a><a class="cell s-pending" href="#root-envs-prod-queue-db447816" title="envs/prod/queue: 1 pending" aria-label="envs/prod/queue: 1 pending"></a><a class="cell s-clean" href="#root-envs-prod-data-c02663d0" title="envs/prod/data: clean" aria-label="envs/prod/data: clean"></a></span></td>
 <td class="num zero">0</td>
 <td class="num">2</td>
 <td class="num">1</td>
@@ -212,7 +213,7 @@ footer{margin-top:2.5rem;color:var(--muted);font-size:.85rem}
 <section class="env" id="env-envs-prod-31740ff5" data-env="envs/prod" aria-labelledby="h-env-envs-prod-31740ff5">
 <h2 id="h-env-envs-prod-31740ff5">envs/prod</h2>
 <details class="root" id="root-envs-prod-iam-788d382c" data-env="envs/prod" open>
-<summary><span class="cell s-error" aria-hidden="true"></span><span class="path">envs/prod/iam</span><span class="small">1 scan errors</span></summary>
+<summary><span class="cell s-error" aria-hidden="true"></span><span class="path">envs/prod/iam</span><span class="small">1 scan error</span></summary>
 <div class="table-wrap"><table class="rows has-detail">
 <colgroup><col style="width:6%"><col style="width:8%"><col style="width:9%"><col style="width:18%"><col style="width:26%"><col style="width:17%"><col style="width:16%"></colgroup>
 <thead><tr><th scope="col">Kind</th><th scope="col">Severity</th><th scope="col">Status</th><th scope="col">Resource</th><th scope="col">Attributes</th><th scope="col">Location</th><th scope="col">Details</th></tr></thead>
@@ -352,7 +353,7 @@ found</span></td>
     });
     roots.forEach(function (d) {
       var n = visibleIn(d);
-      d.hidden = (env !== "" && d.dataset.env !== env) || (rowActive && total(d) > 0 && n === 0);
+      d.hidden = (env !== "" && d.dataset.env !== env) || (rowActive && n === 0);
       d.open = active ? n > 0 : d.dataset.open === "1";
     });
     envs.forEach(function (s) {
@@ -388,6 +389,9 @@ found</span></td>
       ctl.env.value = a.dataset.env;
       apply();
     });
+  });
+  all("a.cell").forEach(function (a) {
+    a.addEventListener("click", function () { setTimeout(openTarget, 0); });
   });
   window.addEventListener("hashchange", openTarget);
   apply();

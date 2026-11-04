@@ -39,6 +39,10 @@ func TestMergePartial(t *testing.T) {
 		{"incomplete shard set complete", []finding.Report{r("1/3"), r("3/3")}, true, true, partialShards},
 		{"mixed splits complete", []finding.Report{r("1/2"), r("2/3")}, true, true, partialShards},
 		{"partial full complete", []finding.Report{r(""), partialFull}, true, true, partialShards},
+		{"repeated shard", []finding.Report{r("1/2"), r("2/2"), r("1/2")}, false, true, partialShards},
+		{"repeated shard complete", []finding.Report{r("1/2"), r("2/2"), r("1/2")}, true, true, partialShards},
+		{"two shard sets", []finding.Report{r("1/2"), r("2/2"), r("1/2"), r("2/2")}, false, true, partialShards},
+		{"two shard sets complete", []finding.Report{r("1/2"), r("2/2"), r("1/2"), r("2/2")}, true, true, partialShards},
 		{"bad shard complete", []finding.Report{r(""), r("x/y")}, true, true, partialShards},
 	}
 	for _, c := range cases {

@@ -51,7 +51,7 @@
     });
     roots.forEach(function (d) {
       var n = visibleIn(d);
-      d.hidden = (env !== "" && d.dataset.env !== env) || (rowActive && total(d) > 0 && n === 0);
+      d.hidden = (env !== "" && d.dataset.env !== env) || (rowActive && n === 0);
       d.open = active ? n > 0 : d.dataset.open === "1";
     });
     envs.forEach(function (s) {
@@ -87,6 +87,9 @@
       ctl.env.value = a.dataset.env;
       apply();
     });
+  });
+  all("a.cell").forEach(function (a) {
+    a.addEventListener("click", function () { setTimeout(openTarget, 0); });
   });
   window.addEventListener("hashchange", openTarget);
   apply();

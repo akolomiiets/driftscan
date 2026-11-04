@@ -95,6 +95,7 @@ func commaList(items []string) []string {
 type htmlRoot struct {
 	Path, Summary, ID, EnvKey, State, Label string
 	Open                                    bool
+	Drift                                   int
 	Rows, AckRows                           htmlTable
 	rank                                    int
 }
@@ -201,10 +202,10 @@ func headline(groups []htmlEnv) string {
 	for _, g := range groups {
 		drift += g.Counts.Drift
 		for _, r := range g.Roots {
-			switch r.State {
-			case "drift":
+			if r.Drift > 0 {
 				driftRoots++
-			case "error":
+			}
+			if r.State == "error" {
 				errRoots++
 			}
 		}
@@ -243,7 +244,7 @@ func metaLine(r finding.Report, groups []htmlEnv) string {
 	if r.Compared {
 		var added, changed int
 		for _, f := range r.Findings {
-			if !f.Active() {
+			if !f.Active() || f.Acknowledged {
 				continue
 			}
 			switch f.Status {
@@ -312,7 +313,7 @@ func htmlGroups(r finding.Report, src Source) []htmlEnv {
 		env := rootEnv(rp)
 		c := Count(finding.Report{Findings: fs})
 		root := htmlRoot{Path: rp, Summary: rootSummary(outcome[rp], c), ID: anchorID("root-", rp), EnvKey: envKey(env),
-			State: rootState(outcome[rp], c)}
+			State: rootState(outcome[rp], c), Drift: c.Drift}
 		root.Label = rp + ": " + root.Summary
 		var rows, ackRows []htmlRow
 		for _, f := range fs {
@@ -381,7 +382,11 @@ func rootSummary(outcome finding.RootOutcome, c Counts) string {
 	}
 	add(c.Drift, "drift")
 	add(c.Pending, "pending")
-	add(c.Errors, "scan errors")
+	if c.Errors == 1 {
+		add(c.Errors, "scan error")
+	} else {
+		add(c.Errors, "scan errors")
+	}
 	add(c.Acknowledged, "acknowledged")
 	add(c.Resolved, "resolved")
 	if len(parts) > 0 {

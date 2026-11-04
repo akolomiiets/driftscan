@@ -289,7 +289,8 @@ const (
 
 // merge joins Reports. Shards never share a Root, so findings are concatenated. The result is
 // Partial when a part is Partial on its own or a shard split is incomplete (complete never
-// overrides that), or when several independent parts (unsharded Reports, or a whole shard split)
+// overrides that; a repeated shard index also counts, which is what shards of several environments
+// look like), or when several independent parts (unsharded Reports, or a whole shard split)
 // are given without complete, since nothing proves they cover every Root.
 func merge(parts []finding.Report, complete bool) (finding.Report, string) {
 	out := finding.Report{Version: finding.ReportVersion, Tool: parts[0].Tool, StartedAt: parts[0].StartedAt}
@@ -303,6 +304,9 @@ func merge(parts []finding.Report, complete bool) (finding.Report, string) {
 		} else if i, n, err := parseShard(p.Shard); err == nil {
 			if splits[n] == nil {
 				splits[n] = map[int]bool{}
+			}
+			if splits[n][i] {
+				broken = true
 			}
 			splits[n][i] = true
 		} else {

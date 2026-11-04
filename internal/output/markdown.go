@@ -239,6 +239,9 @@ func writeHeader(b *strings.Builder, r finding.Report) {
 	fmt.Fprintf(b, "%s %d Roots scanned, %d with Drift.\n\n", icon, c.Roots, c.RootsDrifted)
 	fmt.Fprintf(b, "**%d Drift** | %d Pending changes | %d Scan errors | %d acknowledged | %d resolved\n\n",
 		c.Drift, c.Pending, c.Errors, c.Acknowledged, c.Resolved)
+	if r.Partial {
+		b.WriteString("Partial report: some Roots were not scanned, so Findings of absent Roots are unknown, not resolved.\n\n")
+	}
 	if !r.Compared {
 		b.WriteString("_No Baseline: this Scan establishes it. Statuses start from the next Scan._\n\n")
 		return
