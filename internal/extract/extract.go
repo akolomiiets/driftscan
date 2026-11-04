@@ -250,7 +250,9 @@ func equalJSON(a, b any) bool {
 // entry for the resource (else it is actionable, fail closed). No change, or forget, leaves the drift:
 // "ignore_changes" when lifecycle.ignore_changes covers every drifted path, else "not_reverted". An
 // update leaves it when ignore_changes covers it or the update touches none of the drifted paths.
-// Create, delete and replace are always actionable.
+// A delete leaves it only when the code caused it (resource removed from config), not drift. A
+// replace leaves it when neither its replace paths nor its changed paths touch a drifted path and
+// the reason is a request or trigger, or the plan names replace paths. A create is always actionable.
 func acknowledge(f finding.Finding, ignored []string, planned *tfjson.ResourceChange) (bool, string) {
 	if planned == nil || planned.Change == nil {
 		return false, ""
@@ -259,28 +261,99 @@ func acknowledge(f finding.Finding, ignored []string, planned *tfjson.ResourceCh
 	if allIgnored(f, ignored) {
 		reason = finding.AckIgnoreChanges
 	}
-	a := planned.Change.Actions
-	if len(a) == 0 || a.NoOp() || a.Read() || (len(a) == 1 && a[0] == tfjson.ActionForget) {
-		return true, reason
-	}
-	if !a.Update() {
+	if !leavesDrift(f, ignored, planned) {
 		return false, ""
 	}
-	if reason == finding.AckIgnoreChanges {
-		return true, reason
+	return true, reason
+}
+
+func leavesDrift(f finding.Finding, ignored []string, planned *tfjson.ResourceChange) bool {
+	c := planned.Change
+	a := c.Actions
+	switch {
+	case len(a) == 0 || a.NoOp() || a.Read() || a.Forget():
+		return true
+	case a.Update():
+		if allIgnored(f, ignored) {
+			return true
+		}
+		return len(f.Paths) > 0 && !touches(f.Paths, changedPaths(c))
+	case a.Delete():
+		return codeDrivenDelete[planned.ActionReason]
+	case a.Replace():
+		return replaceLeavesDrift(f, c, planned.ActionReason)
 	}
+	return false
+}
+
+// codeDrivenDelete lists the action reasons for a delete that comes from a code change, which is
+// reported as Pending, not a revert of drift.
+var codeDrivenDelete = map[tfjson.ActionReason]bool{
+	tfjson.ActionReasonDeleteBecauseNoResourceConfig: true,
+	tfjson.ActionReasonDeleteBecauseNoModule:         true,
+	tfjson.ActionReasonDeleteBecauseWrongRepetition:  true,
+	tfjson.ActionReasonDeleteBecauseCountIndex:       true,
+	tfjson.ActionReasonDeleteBecauseEachKey:          true,
+	tfjson.ActionReasonDeleteBecauseNoMoveTarget:     true,
+}
+
+func replaceLeavesDrift(f finding.Finding, c *tfjson.Change, reason tfjson.ActionReason) bool {
 	if len(f.Paths) == 0 {
-		return false, ""
+		return false
 	}
-	plannedPaths := changedPaths(planned.Change)
-	for _, dp := range f.Paths {
-		for _, pp := range plannedPaths {
-			if covered(dp, []string{pp}) || covered(pp, []string{dp}) {
-				return false, ""
+	replace := replacePaths(c.ReplacePaths)
+	if touches(f.Paths, changedPaths(c), replace) {
+		return false
+	}
+	switch reason {
+	case tfjson.ActionReasonReplaceByRequest, tfjson.ActionReasonReplaceByTriggers:
+		return true
+	case tfjson.ActionReasonReplaceBecauseCannotUpdate:
+		return len(replace) > 0
+	}
+	return false
+}
+
+// touches reports whether any drifted path overlaps a planned path (one is a segment-aligned prefix
+// of the other).
+func touches(drift []string, planned ...[]string) bool {
+	for _, set := range planned {
+		for _, pp := range set {
+			for _, dp := range drift {
+				if covered(dp, []string{pp}) || covered(pp, []string{dp}) {
+					return true
+				}
 			}
 		}
 	}
-	return true, reason
+	return false
+}
+
+// replacePaths renders replace_paths (arrays of string and number steps) like drift paths, cut at MaxPathDepth.
+func replacePaths(raw []any) []string {
+	var out []string
+	for _, r := range raw {
+		steps, ok := r.([]any)
+		if !ok {
+			continue
+		}
+		var path []string
+		for _, st := range steps {
+			if len(path) == MaxPathDepth {
+				break
+			}
+			switch v := st.(type) {
+			case string:
+				path = append(path, hclroot.KeyStep(v, len(path) == 0))
+			case float64:
+				path = append(path, "["+strconv.Itoa(int(v))+"]")
+			}
+		}
+		if len(path) > 0 {
+			out = append(out, render(path))
+		}
+	}
+	return out
 }
 
 // allIgnored is true when every drifted path is covered by lifecycle.ignore_changes.

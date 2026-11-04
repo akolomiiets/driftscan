@@ -346,6 +346,206 @@
     "before_sensitive": {},
     "after_sensitive": {}
    }
+  },
+  {
+   "address": "aws_instance.codedel",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "codedel",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.codedelnomod",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "codedelnomod",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.delnoreason",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "delnoreason",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repreq",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repreq",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.reptrig",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "reptrig",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repreqoverlap",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repreqoverlap",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repcu",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcu",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repcuoverlap",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcuoverlap",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repcuempty",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcuempty",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.reptainted",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "reptainted",
+   "change": {
+    "actions": [
+     "update"
+    ],
+    "before": {
+     "arn": "x"
+    },
+    "after": {
+     "arn": "SECRET-y"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
   }
  ],
  "resource_changes": [
@@ -692,6 +892,246 @@
     "before_sensitive": {},
     "after_sensitive": {}
    }
+  },
+  {
+   "address": "aws_instance.codedel",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "codedel",
+   "change": {
+    "actions": [
+     "delete"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "delete_because_no_resource_config"
+  },
+  {
+   "address": "aws_instance.codedelnomod",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "codedelnomod",
+   "change": {
+    "actions": [
+     "delete"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "delete_because_no_module"
+  },
+  {
+   "address": "aws_instance.delnoreason",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "delnoreason",
+   "change": {
+    "actions": [
+     "delete"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": null,
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   }
+  },
+  {
+   "address": "aws_instance.repreq",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repreq",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "replace_by_request"
+  },
+  {
+   "address": "aws_instance.reptrig",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "reptrig",
+   "change": {
+    "actions": [
+     "create",
+     "delete"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "replace_by_triggers"
+  },
+  {
+   "address": "aws_instance.repreqoverlap",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repreqoverlap",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y"
+    },
+    "after": {
+     "arn": "SECRET-z"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "replace_by_request"
+  },
+  {
+   "address": "aws_instance.repcu",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcu",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {},
+    "replace_paths": [
+     [
+      "engine"
+     ]
+    ]
+   },
+   "action_reason": "replace_because_cannot_update"
+  },
+  {
+   "address": "aws_instance.repcuoverlap",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcuoverlap",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {},
+    "replace_paths": [
+     [
+      "arn"
+     ]
+    ]
+   },
+   "action_reason": "replace_because_cannot_update"
+  },
+  {
+   "address": "aws_instance.repcuempty",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "repcuempty",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {}
+   },
+   "action_reason": "replace_because_cannot_update"
+  },
+  {
+   "address": "aws_instance.reptainted",
+   "mode": "managed",
+   "type": "aws_instance",
+   "name": "reptainted",
+   "change": {
+    "actions": [
+     "delete",
+     "create"
+    ],
+    "before": {
+     "arn": "SECRET-y",
+     "engine": "a"
+    },
+    "after": {
+     "arn": "SECRET-y",
+     "engine": "b"
+    },
+    "after_unknown": {},
+    "before_sensitive": {},
+    "after_sensitive": {},
+    "replace_paths": [
+     [
+      "engine"
+     ]
+    ]
+   },
+   "action_reason": "replace_because_tainted"
   }
  ]
 }

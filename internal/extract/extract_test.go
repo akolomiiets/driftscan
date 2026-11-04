@@ -159,6 +159,16 @@ func TestDriftReasons(t *testing.T) {
 		{"aws_instance.replaced", true, finding.AckNotReverted, "arn"},
 		{"aws_instance.forgotten", true, finding.AckNotReverted, "arn"},
 		{"aws_instance.ignorereplace", false, "", "tags.A"},
+		{"aws_instance.codedel", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.codedelnomod", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.delnoreason", false, "", "arn"},
+		{"aws_instance.repreq", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.reptrig", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.repreqoverlap", false, "", "arn"},
+		{"aws_instance.repcu", true, finding.AckNotReverted, "arn"},
+		{"aws_instance.repcuoverlap", false, "", "arn"},
+		{"aws_instance.repcuempty", false, "", "arn"},
+		{"aws_instance.reptainted", false, "", "arn"},
 		{"aws_security_group.setpending", false, "", "rule[1].cidr"},
 		{"aws_security_group.setother", true, finding.AckNotReverted, "rule[1].cidr"},
 	}
@@ -219,5 +229,13 @@ func TestMissingPlannedChangeIsActionable(t *testing.T) {
 	got, err := Drift([]byte(plan), "r", hclroot.Info{})
 	if err != nil || len(got) != 1 || got[0].Acknowledged {
 		t.Errorf("got %+v, %v; want one actionable Finding", got, err)
+	}
+}
+
+func TestReplacePaths(t *testing.T) {
+	raw := []any{[]any{"rule", float64(1), "cidr"}, []any{"tags", "a.b"}, []any{"a", "b", "c", "d"}, "bad", []any{}}
+	want := `rule[1].cidr,tags["a.b"],a.b.c`
+	if got := strings.Join(replacePaths(raw), ","); got != want {
+		t.Errorf("got %q, want %q", got, want)
 	}
 }
