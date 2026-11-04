@@ -237,6 +237,7 @@ func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int
 	fs := flag.NewFlagSet("report", flag.ContinueOnError)
 	fs.SetOutput(stderr)
 	dir := fs.String("C", ".", "directory the Reports were scanned from; source paths are relative to it")
+	complete := fs.Bool("complete", false, "the given Reports cover every Root (e.g. one per environment), so Baseline Findings of Roots absent from them resolve; a shard split missing a shard, or a Partial Report, stays partial")
 	var e emitFlags
 	e.register(fs)
 	if err := fs.Parse(args); err != nil {
@@ -266,30 +267,46 @@ func cmdReport(ctx context.Context, args []string, stdout, stderr io.Writer) int
 		}
 		parts = append(parts, r)
 	}
-	merged := merge(parts)
-	if merged.Partial {
+	merged, why := merge(parts, *complete)
+	switch why {
+	case partialShards:
 		fmt.Fprintln(stderr, "driftscan: shard Reports are incomplete; Findings of Roots not scanned stay unknown")
+	case partialCoverage:
+		fmt.Fprintln(stderr, "driftscan: merged Reports cannot prove full coverage; Baseline Findings of Roots absent from them stay unknown (pass -complete if these Reports cover every Root)")
+	}
+	if n := duplicateRoots(parts); n > 0 {
+		fmt.Fprintf(stderr, "driftscan: %d Root path(s) appear in more than one Report; scan every environment from one common directory so Root paths stay distinct\n", n)
 	}
 	return emit(ctx, cfg, e, modes, merged, stdout, stderr)
 }
 
-// merge joins shard Reports. Shards never share a Root, so findings are concatenated. The result
-// is Partial unless the parts cover every shard 1..n of one split (or a single unsharded Report).
-func merge(parts []finding.Report) finding.Report {
+// Why a merged Report is Partial; the empty value means complete.
+const (
+	partialNone     = ""
+	partialShards   = "shards"
+	partialCoverage = "coverage"
+)
+
+// merge joins Reports. Shards never share a Root, so findings are concatenated. The result is
+// Partial when a part is Partial on its own or a shard split is incomplete (complete never
+// overrides that), or when several independent parts (unsharded Reports, or a whole shard split)
+// are given without complete, since nothing proves they cover every Root.
+func merge(parts []finding.Report, complete bool) (finding.Report, string) {
 	out := finding.Report{Version: finding.ReportVersion, Tool: parts[0].Tool, StartedAt: parts[0].StartedAt}
-	shards := map[string]bool{}
-	total := 0
+	splits := map[int]map[int]bool{}
+	units := 0
+	broken := false
 	for _, p := range parts {
 		if p.Shard == "" {
-			if p.Partial {
-				out.Partial = true
+			units++
+			broken = broken || p.Partial
+		} else if i, n, err := parseShard(p.Shard); err == nil {
+			if splits[n] == nil {
+				splits[n] = map[int]bool{}
 			}
-			total = -1
-		} else if i, n, err := parseShard(p.Shard); err == nil && (total == 0 || total == n) {
-			total = n
-			shards[strconv.Itoa(i)] = true
+			splits[n][i] = true
 		} else {
-			out.Partial = true
+			broken = true
 		}
 		if p.StartedAt.Before(out.StartedAt) {
 			out.StartedAt = p.StartedAt
@@ -298,14 +315,39 @@ func merge(parts []finding.Report) finding.Report {
 		out.Roots = append(out.Roots, p.Roots...)
 		out.Findings = append(out.Findings, p.Findings...)
 	}
-	if total > 0 && len(shards) != total {
-		out.Partial = true
+	for n, set := range splits {
+		broken = broken || len(set) != n
 	}
-	if total == -1 && len(parts) > 1 {
-		out.Partial = true
+	if len(splits) > 0 {
+		units++
 	}
+	broken = broken || len(splits) > 1
 	scan.Sort(out.Findings)
-	return out
+	switch {
+	case broken:
+		out.Partial = true
+		return out, partialShards
+	case units > 1 && !complete:
+		out.Partial = true
+		return out, partialCoverage
+	}
+	return out, partialNone
+}
+
+// duplicateRoots counts Root paths that appear in more than one part, which happens when parts
+// were scanned from different directories.
+func duplicateRoots(parts []finding.Report) int {
+	owner := map[string]int{}
+	dup := map[string]bool{}
+	for i, p := range parts {
+		for _, r := range p.Roots {
+			if prev, ok := owner[r.Path]; ok && prev != i {
+				dup[r.Path] = true
+			}
+			owner[r.Path] = i
+		}
+	}
+	return len(dup)
 }
 
 // emitModes are the parsed values of -annotations and -fail-on.

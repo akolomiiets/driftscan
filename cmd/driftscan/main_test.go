@@ -17,20 +17,101 @@ import (
 
 func TestMergePartial(t *testing.T) {
 	r := func(shard string) finding.Report { return finding.Report{Shard: shard, Partial: shard != ""} }
+	partialFull := finding.Report{Partial: true}
+	cases := []struct {
+		name     string
+		parts    []finding.Report
+		complete bool
+		want     bool
+		why      string
+	}{
+		{"single full", []finding.Report{r("")}, false, false, partialNone},
+		{"all shards", []finding.Report{r("1/3"), r("3/3"), r("2/3")}, false, false, partialNone},
+		{"missing shard", []finding.Report{r("1/3"), r("3/3")}, false, true, partialShards},
+		{"mixed splits", []finding.Report{r("1/2"), r("2/3")}, false, true, partialShards},
+		{"two full", []finding.Report{r(""), r("")}, false, true, partialCoverage},
+		{"two full complete", []finding.Report{r(""), r("")}, true, false, partialNone},
+		{"full and shard", []finding.Report{r(""), r("1/2")}, false, true, partialShards},
+		{"full and shard complete", []finding.Report{r(""), r("1/2")}, true, true, partialShards},
+		{"full and shard set", []finding.Report{r(""), r("1/2"), r("2/2")}, false, true, partialCoverage},
+		{"full and shard set complete", []finding.Report{r(""), r("2/2"), r("1/2")}, true, false, partialNone},
+		{"shard set complete flag", []finding.Report{r("1/2"), r("2/2")}, true, false, partialNone},
+		{"incomplete shard set complete", []finding.Report{r("1/3"), r("3/3")}, true, true, partialShards},
+		{"mixed splits complete", []finding.Report{r("1/2"), r("2/3")}, true, true, partialShards},
+		{"partial full complete", []finding.Report{r(""), partialFull}, true, true, partialShards},
+		{"bad shard complete", []finding.Report{r(""), r("x/y")}, true, true, partialShards},
+	}
+	for _, c := range cases {
+		got, why := merge(c.parts, c.complete)
+		if got.Partial != c.want || why != c.why {
+			t.Errorf("%s: partial = %v (%q), want %v (%q)", c.name, got.Partial, why, c.want, c.why)
+		}
+	}
+}
+
+func TestDuplicateRoots(t *testing.T) {
+	part := func(roots ...string) finding.Report {
+		var r finding.Report
+		for _, x := range roots {
+			r.Roots = append(r.Roots, finding.RootResult{Path: x})
+		}
+		return r
+	}
 	cases := []struct {
 		name  string
 		parts []finding.Report
-		want  bool
+		want  int
 	}{
-		{"single full", []finding.Report{r("")}, false},
-		{"all shards", []finding.Report{r("1/3"), r("3/3"), r("2/3")}, false},
-		{"missing shard", []finding.Report{r("1/3"), r("3/3")}, true},
-		{"mixed splits", []finding.Report{r("1/2"), r("2/3")}, true},
-		{"two full", []finding.Report{r(""), r("")}, true},
+		{"distinct", []finding.Report{part("dev/vpc"), part("prod/vpc")}, 0},
+		{"two shared", []finding.Report{part("01-vpc", "02-app", "x"), part("01-vpc", "02-app")}, 2},
+		{"shared across three counts once", []finding.Report{part("01-vpc"), part("01-vpc"), part("01-vpc")}, 1},
+		{"single part", []finding.Report{part("a", "b")}, 0},
 	}
 	for _, c := range cases {
-		if got := merge(c.parts).Partial; got != c.want {
-			t.Errorf("%s: partial = %v, want %v", c.name, got, c.want)
+		if got := duplicateRoots(c.parts); got != c.want {
+			t.Errorf("%s: duplicates = %d, want %d", c.name, got, c.want)
+		}
+	}
+}
+
+func TestReportMergeWarnings(t *testing.T) {
+	dir := t.TempDir()
+	write := func(name string, r finding.Report) string {
+		r.Version = finding.ReportVersion
+		p := filepath.Join(dir, name)
+		if err := writeReport(p, r); err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+	roots := []finding.RootResult{{Path: "01-vpc"}}
+	a := write("a.json", finding.Report{Roots: roots})
+	b := write("b.json", finding.Report{Roots: roots})
+	s1 := write("s1.json", finding.Report{Shard: "1/2", Partial: true})
+	const duplicate = "1 Root path(s) appear in more than one Report"
+	cases := []struct {
+		name string
+		args []string
+		want []string
+		not  []string
+	}{
+		{"coverage", []string{a, b}, []string{"cannot prove full coverage", "pass -complete", duplicate}, nil},
+		{"complete", []string{"-complete", a, b}, []string{duplicate}, []string{"coverage", "incomplete"}},
+		{"missing shard", []string{"-complete", a, s1}, []string{"shard Reports are incomplete"}, []string{"cannot prove"}},
+	}
+	for _, c := range cases {
+		args := append([]string{"report", "-C", dir, "-out", filepath.Join(dir, "out.json")}, c.args...)
+		var stderr strings.Builder
+		run(args, io.Discard, &stderr)
+		for _, w := range c.want {
+			if !strings.Contains(stderr.String(), w) {
+				t.Errorf("%s: stderr lacks %q: %s", c.name, w, stderr.String())
+			}
+		}
+		for _, w := range c.not {
+			if strings.Contains(stderr.String(), w) {
+				t.Errorf("%s: stderr has %q: %s", c.name, w, stderr.String())
+			}
 		}
 	}
 }

@@ -12,3 +12,7 @@ Apply order between Roots matters, but planning does not: a Root only reads othe
 - Defaults: 4 Roots in parallel, 15 minutes per Root; a timeout is a Scan error. Both are configurable.
 - A shard Report is marked `partial`, and so is a merge that does not cover every shard of one split. In a partial Report, Baseline Findings of Roots that were not scanned stay `unknown`; only a complete Scan resolves the Findings of a Root that disappeared.
 - Roots with a `cloud` block are skipped by discovery (HCP Terraform runs plans remotely, where saved plans are not supported) unless listed under `roots:`.
+
+## Update (v0.3.0)
+
+`report -complete` asserts that the given Reports together cover every Root (for example one per environment), so a merge of several unsharded Reports is no longer partial and Baseline Findings of absent Roots resolve. It does not override a known-incomplete shard split or a Report that is partial on its own. Without it, a merge of two or more unsharded Reports stays partial, because a lost matrix job is indistinguishable from an environment that was never scanned.
